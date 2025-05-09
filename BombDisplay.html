@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komedian Combat</title>
+    <style>
+        body {
+            text-align: center;
+            margin: 50px;
+            background: url('R.gif') repeat;
+            background-size: cover;
+            animation: flameEffect 10s linear infinite;
+            position: relative;
+        }
+
+        @keyframes flameEffect {
+            0% { background-position: 0 0; }
+            100% { background-position: 100% 0; }
+        }
+
+        .logo {
+            max-width: 600px;
+            max-height: 500px;
+            width: 100%;
+            height: auto;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .player-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: 50px;
+        }
+
+        .player {
+            width: 600px;
+            padding: 20px;
+            border: 2px solid #000;
+            text-align: center;
+            background-color: rgba(0, 0, 255, 0.8);
+            position: relative;
+            z-index: 20;
+        }
+
+        .health-bar {
+            height: 20px;
+            background-color: green;
+            width: 100%;
+        }
+
+        .health-text {
+            display: none;
+        }
+
+        .fireball {
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            background-image: url('fireball.png');
+            background-size: cover;
+            display: none;
+            z-index: 10;
+        }
+
+        @keyframes fireball-animation {
+            from { transform: translateX(0); }
+            to { transform: translateX(calc(var(--fireball-target) - 50px)); }
+        }
+
+        .energyblast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1000px;
+            display: none;
+            z-index: 100;
+        }
+
+        .punch-effect {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            display: none;
+            z-index: 90;
+        }
+
+        .kick-effect {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 480px;
+            display: none;
+            z-index: 90;
+        }
+
+        .roast-effect {
+            position: fixed;
+            width: 300px;
+            bottom: -100%;
+            display: none;
+            z-index: 110;
+        }
+
+        .bomb-effect {
+            position: absolute;
+            width: 900px;
+            display: none;
+            z-index: 120;
+            pointer-events: none;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes roast-up {
+            0% { bottom: -100%; }
+            100% { bottom: 0; }
+        }
+
+        @keyframes roast-down {
+            0% { bottom: 0; }
+            100% { bottom: -100%; }
+        }
+
+        .winner-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 4px solid gold;
+            display: none;
+            z-index: 120;
+            text-align: center;
+        }
+
+        .winner-box h2 {
+            font-family: 'Mortal Combat', Arial, sans-serif;
+            color: gold;
+            font-size: 80px;
+            margin: 0;
+        }
+
+        .winner-box p {
+            font-family: 'Mortal Combat', Arial, sans-serif;
+            color: white;
+            font-size: 50px;
+            margin: 10px 0 0;
+        }
+
+        .timer-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: black;
+            border: 2px solid white;
+            width: 300px;
+            height: 300px;
+            display: none;
+            z-index: 130;
+            text-align: center;
+            line-height: 300px;
+        }
+
+        .timer-box p {
+            font-family: 'VsFont', Arial, sans-serif;
+            font-size: 144px;
+            color: white;
+            margin: 0;
+        }
+
+        @font-face {
+            font-family: 'Mortal Combat';
+            src: url('MK4.ttf') format('truetype');
+        }
+
+        @font-face {
+            font-family: 'PlayerFont';
+            src: url('mk2.ttf') format('truetype');
+        }
+        
+        @font-face {
+            font-family: 'VsFont';
+            src: url('mk2.ttf') format('truetype');
+        }
+
+        .player h2 {
+            color: white;
+            font-family: 'PlayerFont', Arial, sans-serif;
+            font-size: 48px;
+        }
+        
+        .vs-text {
+            font-family: 'VsFont', Arial, sans-serif;
+            font-size: 100px;
+            color: white;
+            text-align: center;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+    <img src="DisplayLogo.png" alt="Komedian Combat Logo" class="logo">
+    <p></p>
+    
+    <div class="player-container">
+        <div class="player" id="player1">
+            <h2 id="player1-name">Player 1</h2>
+            <div class="health-bar" id="health1"></div>
+            <p id="health1-text" class="health-text">30</p>
+            <img src="bomb.gif" id="bomb1" class="bomb-effect" alt="Bomb Effect Player 1">
+        </div>
+        
+        <div class="vs-text">VS</div>
+        
+        <div class="player" id="player2">
+            <h2 id="player2-name">Player 2</h2>
+            <div class="health-bar" id="health2"></div>
+            <p id="health2-text" class="health-text">30</p>
+            <img src="bomb.gif" id="bomb2" class="bomb-effect" alt="Bomb Effect Player 2">
+        </div>
+    </div>
+
+    <div class="fireball" id="fireball"></div>
+    <img src="energyblast.gif" id="energyblast" class="energyblast" alt="Energy Blast">
+    <img src="punch.jpg" id="punch" class="punch-effect" alt="Punch Effect">
+    <img src="kick.png" id="kick" class="kick-effect" alt="Kick Effect">
+    <img src="RoastedDragonhead.JPG" id="roast1" class="roast-effect" alt="Roast Effect Player 1">
+    <img src="RoastedDragonhead.JPG" id="roast2" class="roast-effect" alt="Roast Effect Player 2">
+    <audio id="roast-sound" src="sounds/roasted.mp3" preload="auto"></audio>
+    <audio id="gong-sound" src="sounds/gong.m4a" preload="auto"></audio>
+    <audio id="bomb-sound" src="sounds/The bomb.m4a" preload="auto"></audio>
+    
+    <div class="timer-box" id="timer-box">
+        <p id="timer-text">0</p>
+    </div>
+    
+    <div class="winner-box" id="winner-box">
+        <h2>WINNER!</h2>
+        <p id="winner-name"></p>
+    </div>
+    
+    <script>
+        const INITIAL_HEALTH = 30;
+        let prevHealth1 = INITIAL_HEALTH;
+        let prevHealth2 = INITIAL_HEALTH;
+        let timerInterval = null;
+
+        function updateHealth() {
+            let health1 = parseInt(localStorage.getItem('health1'));
+            let health2 = parseInt(localStorage.getItem('health2'));
+
+            if (isNaN(health1)) health1 = INITIAL_HEALTH;
+            if (isNaN(health2)) health2 = INITIAL_HEALTH;
+
+            const healthBar1 = document.getElementById('health1');
+            const healthText1 = document.getElementById('health1-text');
+            healthText1.innerText = `${health1}`;
+            if (health1 > 0) {
+                healthBar1.style.width = `${(health1 / INITIAL_HEALTH) * 100}%`;
+                healthBar1.style.backgroundColor = health1 > 20 ? 'green' : health1 > 10 ? 'yellow' : 'red';
+                healthBar1.style.display = 'block';
+            } else {
+                healthBar1.style.width = '0%';
+                healthBar1.style.display = 'none';
+            }
+
+            const healthBar2 = document.getElementById('health2');
+            const healthText2 = document.getElementById('health2-text');
+            healthText2.innerText = `${health2}`;
+            if (health2 > 0) {
+                healthBar2.style.width = `${(health2 / INITIAL_HEALTH) * 100}%`;
+                healthBar2.style.backgroundColor = health2 > 20 ? 'green' : health2 > 10 ? 'yellow' : 'red';
+                healthBar2.style.display = 'block';
+            } else {
+                healthBar2.style.width = '0%';
+                healthBar2.style.display = 'none';
+            }
+
+            // Hide winner box if both players' health is reset to full
+            const winnerBox = document.getElementById('winner-box');
+            if (health1 === INITIAL_HEALTH && health2 === INITIAL_HEALTH) {
+                winnerBox.style.display = 'none';
+            }
+        }
+
+        function updatePlayerNames() {
+            const player1Name = localStorage.getItem('player1Name') || 'Player 1';
+            const player2Name = localStorage.getItem('player2Name') || 'Player 2';
+
+            document.getElementById('player1-name').innerText = player1Name;
+            document.getElementById('player2-name').innerText = player2Name;
+        }
+
+        function triggerFireball(player) {
+            const fireball = document.getElementById('fireball');
+            const startElement = document.getElementById(`player${player === 1 ? 2 : 1}`);
+            const endElement = document.getElementById(`player${player}`);
+            
+            const startRect = startElement.getBoundingClientRect();
+            const endRect = endElement.getBoundingClientRect();
+            const distance = endRect.left - startRect.left;
+
+            fireball.style.setProperty('--fireball-target', `${distance}px`);
+            fireball.style.top = `${startRect.top + (startRect.height / 2)}px`;
+            fireball.style.left = `${startRect.left + startRect.width}px`;
+            fireball.style.display = 'block';
+            fireball.style.animation = 'fireball-animation 1s linear';
+
+            fireball.addEventListener('animationend', () => {
+                fireball.style.display = 'none';
+                fireball.style.animation = '';
+            });
+        }
+
+        function triggerEnergyBlast(playerHit) {
+            const energyBlast = document.getElementById('energyblast');
+            energyBlast.style.display = 'block';
+            energyBlast.style.transform = playerHit === 1 
+                ? 'translate(-50%, -50%) scaleX(-1)' 
+                : 'translate(-50%, -50%) scaleX(1)';
+            setTimeout(() => {
+                energyBlast.style.display = 'none';
+            }, 1000);
+        }
+
+        function triggerPunch() {
+            const punch = document.getElementById('punch');
+            punch.style.display = 'block';
+            setTimeout(() => {
+                punch.style.display = 'none';
+            }, 800);
+        }
+
+        function triggerKick() {
+            const kick = document.getElementById('kick');
+            kick.style.display = 'block';
+            setTimeout(() => {
+                kick.style.display = 'none';
+            }, 800);
+        }
+
+        function triggerRoast(player) {
+            const roastImg = document.getElementById(`roast${player}`);
+            const roastSound = document.getElementById('roast-sound');
+            const screenWidth = window.innerWidth;
+            const roastWidth = 300;
+            let leftPosition;
+
+            if (player === 1) {
+                leftPosition = (screenWidth / 4) - (roastWidth / 2);
+            } else {
+                leftPosition = (3 * screenWidth / 4) - (roastWidth / 2);
+            }
+
+            roastImg.style.left = `${leftPosition}px`;
+            roastImg.style.display = 'block';
+            roastImg.style.animation = 'roast-up 0.4s ease-out forwards';
+            
+            roastSound.currentTime = 0;
+            roastSound.play().catch(error => console.log('Audio playback failed:', error));
+
+            setTimeout(() => {
+                roastImg.style.animation = 'roast-down 0.4s ease-out forwards';
+                setTimeout(() => {
+                    roastImg.style.display = 'none';
+                    roastImg.style.animation = '';
+                }, 400);
+            }, 800);
+        }
+
+        function triggerBomb(player) {
+            const bombImg = document.getElementById(`bomb${player}`);
+            const bombSound = document.getElementById('bomb-sound');
+            bombSound.currentTime = 0;
+            bombSound.play().catch(error => console.log('Audio playback failed:', error));
+            setTimeout(() => {
+                bombImg.src = `bomb.gif?t=${new Date().getTime()}`; // Force reload to restart GIF
+                bombImg.style.display = 'block';
+                setTimeout(() => {
+                    bombImg.style.display = 'none';
+                }, 1400); // GIF duration after delay
+            }, 100); // 1-second delay before GIF appears
+        }
+
+        function showWinner(winner) {
+            const winnerBox = document.getElementById('winner-box');
+            const winnerName = document.getElementById('winner-name');
+            const playerName = localStorage.getItem(`player${winner}Name`) || `Player ${winner}`;
+            winnerName.innerText = playerName;
+            winnerBox.style.display = 'block';
+        }
+
+        function startTimerCountdown(seconds) {
+            const timerBox = document.getElementById('timer-box');
+            const timerText = document.getElementById('timer-text');
+            const gongSound = document.getElementById('gong-sound');
+            let remainingSeconds = seconds;
+
+            timerBox.style.display = 'block';
+            timerText.innerText = remainingSeconds;
+
+            clearInterval(timerInterval); // Clear any existing interval
+            timerInterval = setInterval(() => {
+                remainingSeconds--;
+                timerText.innerText = remainingSeconds;
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    timerBox.style.display = 'none';
+                    localStorage.setItem('timerActive', 'false');
+                    gongSound.currentTime = 0;
+                    gongSound.play().catch(error => console.log('Audio playback failed:', error));
+                }
+            }, 1000);
+        }
+
+        function stopTimerCountdown() {
+            clearInterval(timerInterval);
+            const timerBox = document.getElementById('timer-box');
+            timerBox.style.display = 'none';
+            localStorage.setItem('timerActive', 'false');
+        }
+
+        function reduceHealth(player, points) {
+            let currentHealth = parseInt(localStorage.getItem(`health${player}`)) || 30;
+            let newHealth = Math.max(0, currentHealth - points);
+            localStorage.setItem(`health${player}`, newHealth);
+            if (points === 3) {
+                triggerFireball(player);
+            }
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        window.addEventListener('storage', () => {
+            let health1 = parseInt(localStorage.getItem('health1')) || INITIAL_HEALTH;
+            let health2 = parseInt(localStorage.getItem('health2')) || INITIAL_HEALTH;
+
+            if (prevHealth1 - health1 === 1) {
+                triggerPunch();
+            } else if (prevHealth1 - health1 === 2) {
+                triggerKick();
+            } else if (prevHealth1 - health1 === 3) {
+                triggerEnergyBlast(1);
+            }
+            
+            if (prevHealth2 - health2 === 1) {
+                triggerPunch();
+            } else if (prevHealth2 - health2 === 2) {
+                triggerKick();
+            } else if (prevHealth2 - health2 === 3) {
+                triggerEnergyBlast(2);
+            }
+
+            if (localStorage.getItem('roastPlayer1')) {
+                triggerRoast(1);
+                localStorage.removeItem('roastPlayer1');
+            }
+            if (localStorage.getItem('roastPlayer2')) {
+                triggerRoast(2);
+                localStorage.removeItem('roastPlayer2');
+            }
+
+            if (localStorage.getItem('bombPlayer1')) {
+                triggerBomb(1);
+                localStorage.removeItem('bombPlayer1');
+            }
+            if (localStorage.getItem('bombPlayer2')) {
+                triggerBomb(2);
+                localStorage.removeItem('bombPlayer2');
+            }
+
+            if (health1 === 0 && prevHealth1 > 0) {
+                showWinner(2);
+            } else if (health2 === 0 && prevHealth2 > 0) {
+                showWinner(1);
+            }
+
+            if (localStorage.getItem('winner')) {
+                showWinner(parseInt(localStorage.getItem('winner')));
+                localStorage.removeItem('winner');
+            }
+
+            if (localStorage.getItem('timerActive') === 'true') {
+                const seconds = parseInt(localStorage.getItem('timerSeconds'));
+                if (!isNaN(seconds) && seconds > 0) {
+                    startTimerCountdown(seconds);
+                    localStorage.removeItem('timerSeconds');
+                }
+            } else if (localStorage.getItem('timerActive') === 'false') {
+                stopTimerCountdown();
+            }
+
+            prevHealth1 = health1;
+            prevHealth2 = health2;
+
+            updateHealth();
+            updatePlayerNames();
+        });
+        
+        window.addEventListener('load', () => {
+            prevHealth1 = parseInt(localStorage.getItem('health1')) || INITIAL_HEALTH;
+            prevHealth2 = parseInt(localStorage.getItem('health2')) || INITIAL_HEALTH;
+            // Set volume for bomb and gong sounds to 75%
+            document.getElementById('bomb-sound').volume = 0.75;
+            document.getElementById('gong-sound').volume = 0.75;
+            updateHealth();
+            updatePlayerNames();
+        });
+    </script>
+</body>
+</html>

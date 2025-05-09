@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Bracket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            background-color: #000000;
+            margin: 0;
+            min-height: 100vh;
+            color: #ffffff;
+        }
+        .bracket-container {
+            display: flex;
+            width: 100%;
+            max-width: 98vw;
+            justify-content: space-between;
+            padding: 8px;
+            box-sizing: border-box;
+            background-color: black;
+            border: 4px solid #DAA520;
+            border-radius: 5px;
+            position: relative;
+            flex-direction: column;
+            align-items: center;
+        }
+        .bracket-container::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border: 1px solid #DAA520;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+        .logo-container {
+            margin: 8px 0;
+            text-align: center;
+        }
+        .logo-container img {
+            max-width: 750px;
+            max-height: 400px;
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        .bracket-columns {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+        .column {
+            flex: 1;
+            min-width: calc(10vw);
+            max-width: calc(12vw);
+            margin: 0 1px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+        .pairing {
+            background-color: #000000;
+            margin: 6px 0;
+            padding: 6px;
+            border-radius: 4px;
+            border: 4px solid #DAA520;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            position: relative;
+            transition: background-color 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .pairing::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border: 1px solid #DAA520;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .pairing p {
+            margin: 2px 0;
+            font-size: calc(0.5vw + 0.5rem);
+            color: #ffffff;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        .pairing .vs {
+            font-weight: bold;
+            color: #DAA520;
+            font-size: calc(0.4vw + 0.4rem);
+        }
+        .pairing:focus {
+            outline: 2px solid #DAA520;
+            background-color: #1a1a1a;
+        }
+        .non-advancer {
+            background-image: url('R.gif');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.7;
+            padding: 2px;
+            border-radius: 2px;
+        }
+        .column.center {
+            align-items: center;
+            min-width: calc(12vw);
+            max-width: calc(14vw);
+            margin-top: 10px;
+        }
+        .center-connector {
+            flex: 0 0 auto;
+            width: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .connector-line {
+            border-top: 2px solid #DAA520;
+            width: 10px;
+        }
+        @media screen and (max-width: 800px) {
+            .bracket-container {
+                padding: 6px;
+            }
+            .logo-container img {
+                max-width: 120px;
+                max-height: 60px;
+            }
+            .column {
+                min-width: calc(12vw);
+                max-width: calc(14vw);
+            }
+            .pairing {
+                margin: 4px 0;
+                padding: 5px;
+            }
+            .pairing p {
+                font-size: calc(0.4vw + 0.4rem);
+            }
+            .pairing .vs {
+                font-size: calc(0.3vw + 0.3rem);
+            }
+            .center-connector {
+                width: 12px;
+            }
+            .connector-line {
+                width: 10px;
+            }
+            .non-advancer {
+                background-size: contain;
+            }
+        }
+        @media screen and (max-width: 500px) {
+            .bracket-container {
+                padding: 4px;
+            }
+            .logo-container img {
+                max-width: 100px;
+                max-height: 50px;
+            }
+            .column {
+                min-width: calc(14vw);
+                max-width: calc(16vw);
+            }
+            .pairing {
+                padding: 4px;
+                margin: 3px 0;
+            }
+            .pairing p {
+                font-size: calc(0.3vw + 0.3rem);
+            }
+            .pairing .vs {
+                font-size: calc(0.2vw + 0.2rem);
+            }
+            .center-connector {
+                width: 12px;
+            }
+            .connector-line {
+                width: 10px;
+            }
+            .non-advancer {
+                background-size: contain;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bracket-container" role="region" aria-label="Tournament Bracket">
+        <div class="logo-container">
+            <img src="KClogo.png" alt="Tournament Logo" aria-label="Tournament Logo">
+        </div>
+        <div class="bracket-columns">
+        </div>
+    </div>
+
+    <script>
+        const defaultState = {
+            players: [
+                "Player 1", "Player 2", "Player 3", "Player 4",
+                "Player 5", "Player 6", "Player 7", "Player 8",
+                "Player 9", "Player 10", "Player 11", "Player 12",
+                "Player 13", "Player 14", "Player 15", "Player 16"
+            ],
+            currentRound: 1,
+            winners: [],
+            advancementHistory: []
+        };
+        let tournamentState;
+        try {
+            tournamentState = JSON.parse(localStorage.getItem('tournamentState')) || defaultState;
+        } catch (e) {
+            console.error('Invalid tournament state, resetting to default:', e);
+            tournamentState = defaultState;
+            localStorage.setItem('tournamentState', JSON.stringify(defaultState));
+        }
+
+        function validatePlayerCount() {
+            let playerCount = tournamentState.players.length;
+            const isPowerOfTwo = playerCount && (playerCount & (playerCount - 1)) === 0;
+            if (!isPowerOfTwo && playerCount > 0) {
+                console.warn('Player count should be a power of 2. Adding byes.');
+                const targetCount = Math.pow(2, Math.ceil(Math.log2(playerCount)));
+                while (playerCount < targetCount) {
+                    tournamentState.players.push(`Bye ${playerCount + 1}`);
+                    playerCount++;
+                }
+                localStorage.setItem('tournamentState', JSON.stringify(tournamentState));
+            }
+        }
+
+        function isRoundFinished(round) {
+            const expectedWinners = [8, 4, 2, 1];
+            const winners = tournamentState.winners[round - 1] || [];
+            return tournamentState.currentRound > round && winners.length === expectedWinners[round - 1];
+        }
+
+        function generateFullBracket() {
+            const bracketColumns = document.querySelector('.bracket-columns');
+            bracketColumns.innerHTML = '';
+            const totalRounds = Math.ceil(Math.log2(tournamentState.players.length || 1));
+            const halfPlayers = tournamentState.players.length / 2;
+            const screenWidth = window.innerWidth;
+            const columnWidth = Math.min(12, (screenWidth - 20) / (totalRounds * 2 + 1)) + 'vw';
+
+            for (let round = 1; round < totalRounds; round++) {
+                const column = document.createElement('div');
+                column.className = 'column left';
+                column.setAttribute('role', 'region');
+                column.setAttribute('aria-label', `Round ${round} Left`);
+
+                let players = round === 1 
+                    ? tournamentState.players.slice(0, halfPlayers)
+                    : (tournamentState.winners[round - 2]?.slice(0, tournamentState.winners[round - 2].length / 2) || []);
+                let winners = tournamentState.winners[round - 1] || [];
+                let isFinished = isRoundFinished(round);
+
+                if (players.length === 0 && round > tournamentState.currentRound) {
+                    const pairingDiv = document.createElement('div');
+                    pairingDiv.className = 'pairing';
+                    pairingDiv.setAttribute('role', 'region');
+                    pairingDiv.setAttribute('aria-label', `Round ${round} Left TBD`);
+                    pairingDiv.tabIndex = 0;
+                    pairingDiv.innerHTML = `<p>Round ${round}</p><p class="vs">TBD</p><p> </p>`;
+                    column.appendChild(pairingDiv);
+                } else {
+                    for (let i = 0; i < players.length; i += 2) {
+                        const pairingDiv = document.createElement('div');
+                        pairingDiv.className = 'pairing';
+                        pairingDiv.setAttribute('role', 'region');
+                        pairingDiv.tabIndex = 0;
+
+                        let player1 = players[i];
+                        let player2 = i + 1 < players.length ? players[i + 1] : null;
+                        let player1Class = '';
+                        let player2Class = '';
+
+                        if (isFinished && player2 && !player2.startsWith('Bye')) {
+                            player1Class = winners.includes(player1) ? '' : 'non-advancer';
+                            player2Class = winners.includes(player2) ? '' : 'non-advancer';
+                        }
+
+                        if (player2) {
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">VS</p>
+                                <p class="${player2Class}" ${player2Class ? 'aria-describedby="loss-indicator"' : ''}>${player2}</p>
+                            `;
+                        } else {
+                            pairingDiv.setAttribute('aria-label', `Bye: ${player1}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">Bye</p>
+                                <p> </p>
+                            `;
+                        }
+                        column.appendChild(pairingDiv);
+                    }
+                }
+
+                bracketColumns.appendChild(column);
+                if (round < totalRounds - 1) {
+                    const connector = document.createElement('div');
+                    connector.className = 'center-connector';
+                    connector.innerHTML = '<div class="connector-line"></div>';
+                    bracketColumns.appendChild(connector);
+                }
+            }
+
+            const centerColumn = document.createElement('div');
+            centerColumn.className = 'column center';
+            centerColumn.setAttribute('role', 'region');
+            centerColumn.setAttribute('aria-label', `Final Round`);
+            
+            let finalPlayers = tournamentState.winners[totalRounds - 2] || [];
+            let winners = tournamentState.winners[totalRounds - 1] || [];
+            let isFinalFinished = isRoundFinished(totalRounds);
+
+            if (finalPlayers.length === 0 && tournamentState.currentRound >= totalRounds) {
+                const pairingDiv = document.createElement('div');
+                pairingDiv.className = 'pairing';
+                pairingDiv.setAttribute('role', 'region');
+                pairingDiv.setAttribute('aria-label', `Final Round TBD`);
+                pairingDiv.tabIndex = 0;
+                pairingDiv.innerHTML = `<p>Final</p><p class="vs">TBD</p><p> </p>`;
+                centerColumn.appendChild(pairingDiv);
+            } else if (finalPlayers.length === 1) {
+                const pairingDiv = document.createElement('div');
+                pairingDiv.className = 'pairing';
+                pairingDiv.setAttribute('role', 'region');
+                pairingDiv.setAttribute('aria-label', `Tournament Winner: ${finalPlayers[0]}`);
+                pairingDiv.tabIndex = 0;
+                pairingDiv.innerHTML = `<p>Winner</p><p class="vs"> </p><p>${finalPlayers[0]}</p>`;
+                centerColumn.appendChild(pairingDiv);
+            } else {
+                for (let i = 0; i < finalPlayers.length; i += 2) {
+                    const pairingDiv = document.createElement('div');
+                    pairingDiv.className = 'pairing';
+                    pairingDiv.setAttribute('role', 'region');
+                    pairingDiv.tabIndex = 0;
+
+                    let player1 = finalPlayers[i];
+                    let player2 = i + 1 < finalPlayers.length ? finalPlayers[i + 1] : null;
+                    let player1Class = '';
+                    let player2Class = '';
+
+                    if (isFinalFinished && player2 && !player2.startsWith('Bye')) {
+                        player1Class = winners.includes(player1) ? '' : 'non-advancer';
+                        player2Class = winners.includes(player2) ? '' : 'non-advancer';
+                    }
+
+                    if (player2) {
+                        pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}`);
+                        pairingDiv.innerHTML = `
+                            <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                            <p class="vs">VS</p>
+                            <p class="${player2Class}" ${player2Class ? 'aria-describedby="loss-indicator"' : ''}>${player2}</p>
+                        `;
+                    } else {
+                        pairingDiv.setAttribute('aria-label', `Bye: ${player1}`);
+                        pairingDiv.innerHTML = `
+                            <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                            <p class="vs">Bye</p>
+                            <p> </p>
+                        `;
+                    }
+                    centerColumn.appendChild(pairingDiv);
+                }
+            }
+            bracketColumns.appendChild(centerColumn);
+
+            for (let round = totalRounds - 1; round >= 1; round--) {
+                const column = document.createElement('div');
+                column.className = 'column right';
+                column.setAttribute('role', 'region');
+                column.setAttribute('aria-label', `Round ${round} Right`);
+
+                let players = round === 1 
+                    ? tournamentState.players.slice(halfPlayers)
+                    : (tournamentState.winners[round - 2]?.slice(tournamentState.winners[round - 2].length / 2) || []);
+                let winners = tournamentState.winners[round - 1] || [];
+                let isFinished = isRoundFinished(round);
+
+                if (players.length === 0 && round > tournamentState.currentRound) {
+                    const pairingDiv = document.createElement('div');
+                    pairingDiv.className = 'pairing';
+                    pairingDiv.setAttribute('role', 'region');
+                    pairingDiv.setAttribute('aria-label', `Round ${round} Right TBD`);
+                    pairingDiv.tabIndex = 0;
+                    pairingDiv.innerHTML = `<p>Round ${round}</p><p class="vs">TBD</p><p> </p>`;
+                    column.appendChild(pairingDiv);
+                } else {
+                    for (let i = 0; i < players.length; i += 2) {
+                        const pairingDiv = document.createElement('div');
+                        pairingDiv.className = 'pairing';
+                        pairingDiv.setAttribute('role', 'region');
+                        pairingDiv.tabIndex = 0;
+
+                        let player1 = players[i];
+                        let player2 = i + 1 < players.length ? players[i + 1] : null;
+                        let player1Class = '';
+                        let player2Class = '';
+
+                        if (isFinished && player2 && !player2.startsWith('Bye')) {
+                            player1Class = winners.includes(player1) ? '' : 'non-advancer';
+                            player2Class = winners.includes(player2) ? '' : 'non-advancer';
+                        }
+
+                        if (player2) {
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">VS</p>
+                                <p class="${player2Class}" ${player2Class ? 'aria-describedby="loss-indicator"' : ''}>${player2}</p>
+                            `;
+                        } else {
+                            pairingDiv.setAttribute('aria-label', `Bye: ${player1}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">Bye</p>
+                                <p> </p>
+                            `;
+                        }
+                        column.appendChild(pairingDiv);
+                    }
+                }
+
+                if (round < totalRounds - 1) {
+                    const connector = document.createElement('div');
+                    connector.className = 'center-connector';
+                    connector.innerHTML = '<div class="connector-line"></div>';
+                    bracketColumns.appendChild(connector);
+                }
+                bracketColumns.appendChild(column);
+            }
+        }
+
+        validatePlayerCount();
+        generateFullBracket();
+
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'tournamentState') {
+                try {
+                    tournamentState = JSON.parse(event.newValue) || defaultState;
+                } catch (e) {
+                    console.error('Invalid tournament state, resetting to default:', e);
+                    tournamentState = defaultState;
+                    localStorage.setItem('tournamentState', JSON.stringify(defaultState));
+                }
+                validatePlayerCount();
+                generateFullBracket();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            generateFullBracket();
+        });
+    </script>
+</body>
+</html>

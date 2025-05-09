@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        .buttons-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .player-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 200px;
+        }
+        .button {
+            margin: 5px;
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .reset-button {
+            background-color: #f44336;
+        }
+        .reset-button:hover {
+            background-color: #da190b;
+        }
+        .roast-button {
+            background-color: #ff9800;
+        }
+        .roast-button:hover {
+            background-color: #e68a00;
+        }
+        .bomb-button {
+            background-color: #9c27b0;
+        }
+        .bomb-button:hover {
+            background-color: #7b1fa2;
+        }
+        .winner-button {
+            background-color: #2196F3;
+        }
+        .winner-button:hover {
+            background-color: #1976D2;
+        }
+        .timer-start-button {
+            background-color: #2196F3;
+        }
+        .timer-start-button:hover {
+            background-color: #1976D2;
+        }
+        .timer-stop-button {
+            background-color: #f44336;
+        }
+        .timer-stop-button:hover {
+            background-color: #da190b;
+        }
+        .fireball {
+            position: fixed;
+            width: 100px;
+            display: none;
+            z-index: 10;
+            pointer-events: none;
+        }
+        @keyframes fireball-animation {
+            from { transform: translateX(0); }
+            to { transform: translateX(calc(var(--distance) * 1px)); }
+        }
+        input[type="text"], input[type="number"] {
+            padding: 5px;
+            margin: 5px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Set Player Names</h1>
+    <div>
+        <label>Player 1: <input type="text" id="player1Name" placeholder="Player 1"></label><br>
+        <label>Player 2: <input type="text" id="player2Name" placeholder="Player 2"></label>
+    </div>
+    
+    <h1>Judge Panel</h1>
+    <p>Select points to reduce from a player's health</p>
+    
+    <div class="buttons-container">
+        <div class="player-controls">
+            <h2>Player 1</h2>
+            <button class="button" data-player="1" data-points="1">-1</button>
+            <button class="button" data-player="1" data-points="2">-2</button>
+            <button class="button" data-player="1" data-points="3">-3</button>
+            <button class="button roast-button" data-player="1">Roast</button>
+            <button class="button bomb-button" data-player="1">Bomb</button>
+            <button class="button winner-button" data-player="1">Declare Winner</button>
+        </div>
+        <div class="player-controls">
+            <h2>Player 2</h2>
+            <button class="button" data-player="2" data-points="1">-1</button>
+            <button class="button" data-player="2" data-points="2">-2</button>
+            <button class="button" data-player="2" data-points="3">-3</button>
+            <button class="button roast-button" data-player="2">Roast</button>
+            <button class="button bomb-button" data-player="2">Bomb</button>
+            <button class="button winner-button" data-player="2">Declare Winner</button>
+        </div>
+    </div>
+
+    <h1>Reset Health</h1>
+    <button class="button reset-button" id="resetHealth">Reset Health to Full</button>
+    
+    <h1>Timer Control</h1>
+    <div>
+        <label>Timer (seconds): <input type="number" id="timerInput" min="1" placeholder="Enter seconds"></label><br>
+        <button class="button timer-start-button" id="startTimer">Start Timer</button>
+        <button class="button timer-stop-button" id="stopTimer">Stop Timer</button>
+    </div>
+    
+    <audio id="sound1" src="sounds/hit1.mp3" preload="auto"></audio>
+    <audio id="sound2" src="sounds/hit2.mp3" preload="auto"></audio>
+    <audio id="sound3" src="sounds/hit3.mp3" preload="auto"></audio>
+    
+    <img src="energyblast.gif" id="fireball" class="fireball" alt="Energy Blast">
+    
+    <script>
+        const INITIAL_HEALTH = 30;
+        const sounds = {};
+
+        const elements = {
+            player1Name: document.getElementById('player1Name'),
+            player2Name: document.getElementById('player2Name'),
+            fireball: document.getElementById('fireball'),
+            buttons: document.querySelectorAll('.button[data-player]'),
+            reset: document.getElementById('resetHealth')
+        };
+
+        function initSounds() {
+            sounds[1] = document.getElementById('sound1');
+            sounds[2] = document.getElementById('sound2');
+            sounds[3] = document.getElementById('sound3');
+            
+            Object.values(sounds).forEach(sound => {
+                sound.addEventListener('error', () => {
+                    console.error(`Failed to load sound: ${sound.src}`);
+                });
+            });
+        }
+
+        function updateName(event) {
+            const { id, value } = event.target;
+            localStorage.setItem(id, value.trim() || event.target.placeholder);
+        }
+
+        function reduceHealth(player, points) {
+            const currentHealth = parseInt(localStorage.getItem(`health${player}`)) || INITIAL_HEALTH;
+            const newHealth = Math.max(0, currentHealth - points);
+            localStorage.setItem(`health${player}`, newHealth);
+            
+            try {
+                if (sounds[points]) {
+                    sounds[points].currentTime = 0;
+                    sounds[points].play().catch(error => {
+                        console.log('Audio playback failed:', error);
+                        continueGameFlow(player, points);
+                    });
+                }
+            } catch (error) {
+                console.log('Sound error:', error);
+                continueGameFlow(player, points);
+            }
+        }
+
+        function triggerRoast(player) {
+            localStorage.setItem(`roastPlayer${player}`, 'true');
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        function triggerBomb(player) {
+            localStorage.setItem(`bombPlayer${player}`, 'true');
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        function declareWinner(player) {
+            localStorage.setItem('winner', player);
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        function startTimer() {
+            const timerInput = document.getElementById('timerInput');
+            const seconds = parseInt(timerInput.value);
+            if (isNaN(seconds) || seconds <= 0) {
+                alert('Please enter a valid number of seconds!');
+                return;
+            }
+            localStorage.setItem('timerSeconds', seconds);
+            localStorage.setItem('timerActive', 'true');
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        function stopTimer() {
+            localStorage.setItem('timerActive', 'false');
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        function continueGameFlow(player, points) {
+            if (points === 3) triggerFireball(player);
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        function triggerFireball(player) {
+            const startX = player === 1 ? window.innerWidth - 150 : 50;
+            const endX = player === 1 ? 50 : window.innerWidth - 150;
+            const distance = endX - startX;
+
+            Object.assign(elements.fireball.style, {
+                top: '50%',
+                left: `${startX}px`,
+                display: 'block',
+                '--distance': distance
+            });
+            
+            elements.fireball.style.animation = 'fireball-animation 1s linear';
+            elements.fireball.onanimationend = () => {
+                elements.fireball.style.display = 'none';
+                elements.fireball.style.animation = '';
+            };
+        }
+
+        function resetHealth() {
+            ['health1', 'health2'].forEach(key => localStorage.setItem(key, INITIAL_HEALTH));
+            window.dispatchEvent(new Event('storage'));
+            alert('Health bars reset to full!');
+        }
+
+        elements.player1Name.addEventListener('input', updateName);
+        elements.player2Name.addEventListener('input', updateName);
+        elements.buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                const player = parseInt(button.dataset.player);
+                const points = parseInt(button.dataset.points);
+                if (button.classList.contains('roast-button')) {
+                    triggerRoast(player);
+                } else if (button.classList.contains('bomb-button')) {
+                    triggerBomb(player);
+                } else if (button.classList.contains('winner-button')) {
+                    declareWinner(player);
+                } else {
+                    reduceHealth(player, points);
+                }
+            });
+        });
+        elements.reset.addEventListener('click', resetHealth);
+        document.getElementById('startTimer').addEventListener('click', startTimer);
+        document.getElementById('stopTimer').addEventListener('click', stopTimer);
+
+        window.addEventListener('load', () => {
+            initSounds();
+            elements.player1Name.value = localStorage.getItem('player1Name') || '';
+            elements.player2Name.value = localStorage.getItem('player2Name') || '';
+        });
+    </script>
+</body>
+</html>

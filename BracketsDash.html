@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #000000;
+            margin: 0;
+            min-height: 100vh;
+            color: #ffffff;
+        }
+        .dashboard {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #000000;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            position: relative;
+            border: 4px solid #DAA520;
+        }
+        .dashboard::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border: 1px solid #DAA520;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+        h1 {
+            text-align: center;
+            color: #ffffff;
+        }
+        .player-count-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .player-count-label {
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .player-count-select {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #DAA520;
+            border-radius: 4px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .player-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .player-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pairing {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            border: 4px solid #DAA520;
+            position: relative;
+        }
+        .pairing::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border: 1px solid #DAA520;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .player-input {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #DAA520;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            color: #333;
+        }
+        .vs {
+            font-weight: bold;
+            color: #DAA520;
+            font-size: 14px;
+        }
+        .winner-selection {
+            margin-bottom: 20px;
+        }
+        .winner-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .winner-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .winner-pairing {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            border: 4px solid #DAA520;
+            position: relative;
+        }
+        .winner-pairing::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border: 1px solid #DAA520;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .player-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 2px 0;
+        }
+        .player-name {
+            font-size: 16px;
+            color: #ffffff;
+            flex: 1;
+            text-align: left;
+        }
+        .advance-btn {
+            padding: 5px 10px;
+            font-size: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            min-width: 60px;
+        }
+        .advance-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .advance-btn:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        .advance-btn:focus {
+            outline: 2px solid #DAA520;
+            outline-offset: 2px;
+        }
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .undo-btn, .clear-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .undo-btn {
+            background-color: #dc3545;
+        }
+        .undo-btn:hover {
+            background-color: #c82333;
+        }
+        .clear-btn {
+            background-color: #fd7e14;
+        }
+        .clear-btn:hover {
+            background-color: #e06c12;
+        }
+        .live-region {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+        }
+        @media screen and (max-width: 600px) {
+            .player-container, .winner-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .player-column, .winner-column {
+                width: 100%;
+            }
+            .player-input, .player-name {
+                font-size: 14px;
+            }
+            .vs {
+                font-size: 12px;
+            }
+            .advance-btn {
+                font-size: 10px;
+                padding: 4px 8px;
+                min-width: 50px;
+            }
+            .undo-btn, .clear-btn {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            .player-count-select {
+                font-size: 14px;
+                padding: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>Tournament Dashboard - Round <span id="round-number">1</span></h1>
+        <div class="player-count-container">
+            <label for="player-count" class="player-count-label">Number of Players:</label>
+            <select id="player-count" class="player-count-select" aria-label="Select number of players">
+                <option value="4">4</option>
+                <option value="8">8</option>
+                <option value="16" selected>16</option>
+                <option value="32">32</option>
+            </select>
+        </div>
+        <div class="player-container" id="player-container">
+            <div class="player-column" id="left-column" role="region" aria-label="Left Bracket Players"></div>
+            <div class="player-column" id="right-column" role="region" aria-label="Right Bracket Players"></div>
+        </div>
+        <div class="winner-selection" id="winner-selection"></div>
+        <div class="button-group">
+            <button class="undo-btn" onclick="undoAdvancement()" aria-label="Undo last advancement">Undo Last Advancement</button>
+            <button class="clear-btn" onclick="clearNames()" aria-label="Clear all player names and reset tournament">Clear Names</button>
+        </div>
+        <div class="live-region" aria-live="polite" id="live-region"></div>
+    </div>
+
+    <script>
+        // Load tournament state from localStorage
+        function getDefaultState(playerCount = 16) {
+            const players = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
+            return {
+                playerCount: playerCount,
+                players: players,
+                currentRound: 1,
+                winners: [],
+                advancementHistory: [],
+                pendingWinners: []
+            };
+        }
+        let tournamentState = JSON.parse(localStorage.getItem('tournamentState')) || getDefaultState(16);
+
+        // Ensure pendingWinners is cleared on initialization if round is reset
+        if (tournamentState.currentRound === 1 && tournamentState.winners.length === 0) {
+            tournamentState.pendingWinners = [];
+            localStorage.setItem('tournamentState', JSON.stringify(tournamentState));
+        }
+
+        // Cache for player name DOM elements in winner selection
+        const playerNameElements = new Map(); // Map<playerIndex, Set<HTMLElement>>
+
+        // Validate player count and add byes if necessary
+        function validatePlayerCount() {
+            let playerCount = tournamentState.players.length;
+            const isPowerOfTwo = playerCount && (playerCount & (playerCount - 1)) === 0;
+            if (!isPowerOfTwo && playerCount > 0) {
+                const targetCount = Math.pow(2, Math.ceil(Math.log2(playerCount)));
+                while (playerCount < targetCount) {
+                    tournamentState.players.push(`Bye ${playerCount + 1}`);
+                    playerCount++;
+                }
+                tournamentState.playerCount = targetCount;
+                saveState();
+            }
+        }
+
+        // Generate input fields for player names
+        function generateInputs() {
+            const leftColumn = document.getElementById('left-column');
+            const rightColumn = document.getElementById('right-column');
+            leftColumn.innerHTML = '';
+            rightColumn.innerHTML = '';
+
+            const halfPlayers = tournamentState.players.length / 2;
+
+            // Left column
+            for (let i = 0; i < halfPlayers; i += 2) {
+                const pairing = document.createElement('div');
+                pairing.className = 'pairing';
+                pairing.setAttribute('role', 'group');
+                pairing.setAttribute('aria-label', `Match: Player ${i + 1} vs Player ${i + 2}`);
+
+                const input1 = document.createElement('input');
+                input1.className = 'player-input';
+                input1.value = tournamentState.players[i];
+                input1.dataset.index = i;
+                input1.setAttribute('aria-label', `Player ${i + 1} name`);
+                input1.addEventListener('input', (e) => {
+                    const oldName = tournamentState.players[i];
+                    tournamentState.players[i] = e.target.value || `Player ${i + 1}`;
+                    saveState();
+                    updatePlayerName(i, tournamentState.players[i], oldName);
+                });
+
+                const vs = document.createElement('span');
+                vs.className = 'vs';
+                vs.textContent = 'VS';
+
+                const input2 = document.createElement('input');
+                input2.className = 'player-input';
+                input2.value = i + 1 < halfPlayers ? tournamentState.players[i + 1] : '';
+                input2.dataset.index = i + 1;
+                input2.setAttribute('aria-label', `Player ${i + 2} name`);
+                input2.disabled = i + 1 >= halfPlayers;
+                input2.addEventListener('input', (e) => {
+                    const oldName = tournamentState.players[i + 1];
+                    tournamentState.players[i + 1] = e.target.value || `Player ${i + 2}`;
+                    saveState();
+                    updatePlayerName(i + 1, tournamentState.players[i + 1], oldName);
+                });
+
+                pairing.appendChild(input1);
+                pairing.appendChild(vs);
+                pairing.appendChild(input2);
+                leftColumn.appendChild(pairing);
+            }
+
+            // Right column
+            for (let i = halfPlayers; i < tournamentState.players.length; i += 2) {
+                const pairing = document.createElement('div');
+                pairing.className = 'pairing';
+                pairing.setAttribute('role', 'group');
+                pairing.setAttribute('aria-label', `Match: Player ${i + 1} vs Player ${i + 2}`);
+
+                const input1 = document.createElement('input');
+                input1.className = 'player-input';
+                input1.value = tournamentState.players[i];
+                input1.dataset.index = i;
+                input1.setAttribute('aria-label', `Player ${i + 1} name`);
+                input1.addEventListener('input', (e) => {
+                    const oldName = tournamentState.players[i];
+                    tournamentState.players[i] = e.target.value || `Player ${i + 1}`;
+                    saveState();
+                    updatePlayerName(i, tournamentState.players[i], oldName);
+                });
+
+                const vs = document.createElement('span');
+                vs.className = 'vs';
+                vs.textContent = 'VS';
+
+                const input2 = document.createElement('input');
+                input2.className = 'player-input';
+                input2.value = i + 1 < tournamentState.players.length ? tournamentState.players[i + 1] : '';
+                input2.dataset.index = i + 1;
+                input2.setAttribute('aria-label', `Player ${i + 2} name`);
+                input2.disabled = i + 1 >= tournamentState.players.length;
+                input2.addEventListener('input', (e) => {
+                    const oldName = tournamentState.players[i + 1];
+                    tournamentState.players[i + 1] = e.target.value || `Player ${i + 2}`;
+                    saveState();
+                    updatePlayerName(i + 1, tournamentState.players[i + 1], oldName);
+                });
+
+                pairing.appendChild(input1);
+                pairing.appendChild(vs);
+                pairing.appendChild(input2);
+                rightColumn.appendChild(pairing);
+            }
+        }
+
+        // Update player name in winner selection and winners array
+        function updatePlayerName(index, newName, oldName) {
+            tournamentState.players[index] = newName;
+            tournamentState.winners = tournamentState.winners.map(round =>
+                round.map(w => (w === oldName ? newName : w))
+            );
+            tournamentState.advancementHistory = tournamentState.advancementHistory.map(state => ({
+                ...state,
+                players: state.players.map((p, i) => (i === index ? newName : p)),
+                winners: state.winners.map(round =>
+                    round.map(w => (w === oldName ? newName : w))
+                )
+            }));
+            tournamentState.pendingWinners = tournamentState.pendingWinners.map(w =>
+                w.player === oldName ? { ...w, player: newName } : w
+            );
+            if (playerNameElements.has(index)) {
+                playerNameElements.get(index).forEach(element => {
+                    element.textContent = newName;
+                    const pairing = element.closest('.winner-pairing');
+                    if (pairing) {
+                        const otherName = pairing.querySelectorAll('.player-name')[0].textContent === newName
+                            ? pairing.querySelectorAll('.player-name')[1].textContent
+                            : pairing.querySelectorAll('.player-name')[0].textContent;
+                        pairing.setAttribute('aria-label', `Match: ${newName} vs ${otherName}`);
+                    }
+                });
+            }
+            saveState();
+            const liveRegion = document.getElementById('live-region');
+            liveRegion.textContent = `Player ${index + 1} name changed to ${newName}`;
+        }
+
+        // Generate bracket-like layout for selecting winners
+        function generatePairingSelections() {
+            const winnerSelection = document.getElementById('winner-selection');
+            winnerSelection.innerHTML = '';
+            let currentPlayers = tournamentState.currentRound === 1 
+                ? tournamentState.players 
+                : (tournamentState.winners[tournamentState.currentRound - 2] || []);
+
+            // Clear cached elements for this round
+            playerNameElements.clear();
+
+            // Create container for winner selection
+            const container = document.createElement('div');
+            container.className = 'winner-container';
+            container.setAttribute('role', 'region');
+            container.setAttribute('aria-label', `Round ${tournamentState.currentRound} Winner Selection`);
+
+            // Handle final round (2 players) or tournament winner (1 or 0 players)
+            if (currentPlayers.length <= 2) {
+                if (currentPlayers.length === 2) {
+                    const centerColumn = document.createElement('div');
+                    centerColumn.className = 'winner-column';
+                    centerColumn.style.margin = '0 auto';
+                    centerColumn.setAttribute('role', 'region');
+                    centerColumn.setAttribute('aria-label', `Final Round ${tournamentState.currentRound}`);
+
+                    const playerIndex1 = tournamentState.players.indexOf(currentPlayers[0]);
+                    const playerIndex2 = tournamentState.players.indexOf(currentPlayers[1]);
+                    const pairing = createWinnerPairing(currentPlayers[0], currentPlayers[1], 0, playerIndex1, playerIndex2);
+                    centerColumn.appendChild(pairing);
+
+                    container.appendChild(centerColumn);
+                } else if (currentPlayers.length === 1) {
+                    const winnerDiv = document.createElement('div');
+                    winnerDiv.style.textAlign = 'center';
+                    winnerDiv.style.padding = '10px';
+                    winnerDiv.style.border = '4px solid #DAA520';
+                    winnerDiv.style.position = 'relative';
+                    winnerDiv.className = 'winner-pairing';
+                    winnerDiv.innerHTML = `<h3 style="margin: 0; color: #ffffff;">Tournament Winner: ${currentPlayers[0]}</h3>`;
+                    winnerSelection.appendChild(winnerDiv);
+                    document.querySelector('.undo-btn').disabled = true;
+                    document.querySelector('.clear-btn').disabled = true;
+                    playerNameElements.clear();
+                    return;
+                } else {
+                    winnerSelection.innerHTML = `<h3 style="color: #ffffff; text-align: center;">No players remaining</h3>`;
+                    playerNameElements.clear();
+                    return;
+                }
+            } else {
+                if (tournamentState.currentRound === 1) {
+                    const leftColumn = document.createElement('div');
+                    leftColumn.className = 'winner-column';
+                    leftColumn.setAttribute('role', 'region');
+                    leftColumn.setAttribute('aria-label', `Left Bracket Round ${tournamentState.currentRound}`);
+
+                    const rightColumn = document.createElement('div');
+                    rightColumn.className = 'winner-column';
+                    rightColumn.setAttribute('role', 'region');
+                    rightColumn.setAttribute('aria-label', `Right Bracket Round ${tournamentState.currentRound}`);
+
+                    const halfPlayers = currentPlayers.length / 2;
+                    let pairIndex = 0;
+
+                    // Left column
+                    for (let i = 0; i < halfPlayers; i += 2) {
+                        if (i + 1 < halfPlayers) {
+                            if (currentPlayers[i + 1].startsWith('Bye')) {
+                                selectWinner(currentPlayers[i], pairIndex, null);
+                                pairIndex++;
+                                continue;
+                            }
+                            const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, i, i + 1);
+                            leftColumn.appendChild(pairing);
+                            pairIndex++;
+                        }
+                    }
+
+                    // Right column
+                    for (let i = halfPlayers; i < currentPlayers.length; i += 2) {
+                        if (i + 1 < currentPlayers.length) {
+                            if (currentPlayers[i + 1].startsWith('Bye')) {
+                                selectWinner(currentPlayers[i], pairIndex, null);
+                                pairIndex++;
+                                continue;
+                            }
+                            const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, i, i + 1);
+                            rightColumn.appendChild(pairing);
+                            pairIndex++;
+                        }
+                    }
+
+                    container.appendChild(leftColumn);
+                    container.appendChild(rightColumn);
+                } else {
+                    const centerColumn = document.createElement('div');
+                    centerColumn.className = 'winner-column';
+                    centerColumn.style.margin = '0 auto';
+                    centerColumn.setAttribute('role', 'region');
+                    centerColumn.setAttribute('aria-label', `Round ${tournamentState.currentRound}`);
+
+                    let pairIndex = 0;
+                    for (let i = 0; i < currentPlayers.length; i += 2) {
+                        if (i + 1 < currentPlayers.length) {
+                            const playerIndex1 = tournamentState.players.indexOf(currentPlayers[i]);
+                            const playerIndex2 = tournamentState.players.indexOf(currentPlayers[i + 1]);
+                            const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, playerIndex1, playerIndex2);
+                            centerColumn.appendChild(pairing);
+                            pairIndex++;
+                        }
+                    }
+
+                    container.appendChild(centerColumn);
+                }
+            }
+
+            winnerSelection.appendChild(container);
+        }
+
+        // Helper function to create a winner pairing
+        function createWinnerPairing(player1, player2, pairIndex, playerIndex1, playerIndex2) {
+            const pairing = document.createElement('div');
+            pairing.className = 'winner-pairing';
+            pairing.setAttribute('role', 'group');
+            pairing.setAttribute('aria-label', `Match: ${player1} vs ${player2}`);
+            pairing.dataset.pairIndex = pairIndex;
+
+            const row1 = document.createElement('div');
+            row1.className = 'player-row';
+            const name1 = document.createElement('span');
+            name1.className = 'player-name';
+            name1.textContent = player1;
+            name1.dataset.playerIndex = playerIndex1;
+            if (playerIndex1 >= 0) {
+                if (!playerNameElements.has(playerIndex1)) playerNameElements.set(playerIndex1, new Set());
+                playerNameElements.get(playerIndex1).add(name1);
+            }
+            const btn1 = document.createElement('button');
+            btn1.className = 'advance-btn';
+            btn1.textContent = 'Advance';
+            btn1.setAttribute('aria-label', `Advance ${player1}`);
+            btn1.dataset.player = player1;
+            btn1.dataset.pairIndex = pairIndex;
+            btn1.disabled = tournamentState.pendingWinners.some(w => w.pairIndex === pairIndex);
+            btn1.addEventListener('click', () => selectWinner(player1, pairIndex, pairing));
+
+            row1.appendChild(name1);
+            row1.appendChild(btn1);
+
+            const vs = document.createElement('div');
+            vs.className = 'vs';
+            vs.textContent = 'VS';
+
+            const row2 = document.createElement('div');
+            row2.className = 'player-row';
+            const name2 = document.createElement('span');
+            name2.className = 'player-name';
+            name2.textContent = player2;
+            name2.dataset.playerIndex = playerIndex2;
+            if (playerIndex2 >= 0) {
+                if (!playerNameElements.has(playerIndex2)) playerNameElements.set(playerIndex2, new Set());
+                playerNameElements.get(playerIndex2).add(name2);
+            }
+            const btn2 = document.createElement('button');
+            btn2.className = 'advance-btn';
+            btn2.textContent = 'Advance';
+            btn2.setAttribute('aria-label', `Advance ${player2}`);
+            btn2.dataset.player = player2;
+            btn2.dataset.pairIndex = pairIndex;
+            btn2.disabled = tournamentState.pendingWinners.some(w => w.pairIndex === pairIndex);
+            btn2.addEventListener('click', () => selectWinner(player2, pairIndex, pairing));
+
+            row2.appendChild(name2);
+            row2.appendChild(btn2);
+
+            pairing.appendChild(row1);
+            pairing.appendChild(vs);
+            pairing.appendChild(row2);
+
+            return pairing;
+        }
+
+        // Handle winner selection
+        function selectWinner(player, pairIndex, pairing) {
+            tournamentState.pendingWinners.push({ pairIndex, player });
+            saveState();
+
+            if (pairing) {
+                const buttons = pairing.querySelectorAll('.advance-btn');
+                buttons.forEach(btn => btn.disabled = true);
+            }
+
+            const currentPlayers = tournamentState.currentRound === 1 
+                ? tournamentState.players 
+                : tournamentState.winners[tournamentState.currentRound - 2];
+            const expectedWinners = Math.floor(currentPlayers.length / 2);
+            if (tournamentState.pendingWinners.length === expectedWinners) {
+                advanceRound();
+            }
+
+            const liveRegion = document.getElementById('live-region');
+            liveRegion.textContent = `${player} selected as winner for match ${pairIndex + 1}`;
+        }
+
+        // Advance to next round
+        function advanceRound() {
+            tournamentState.advancementHistory.push(JSON.parse(JSON.stringify(tournamentState)));
+            const winners = tournamentState.pendingWinners.map(w => w.player);
+            tournamentState.winners[tournamentState.currentRound - 1] = winners;
+            tournamentState.currentRound++;
+            tournamentState.pendingWinners = [];
+            saveState();
+            updateDashboard();
+
+            const liveRegion = document.getElementById('live-region');
+            liveRegion.textContent = `Advanced to Round ${tournamentState.currentRound}`;
+        }
+
+        // Undo the most recent advancement
+        function undoAdvancement() {
+            if (tournamentState.advancementHistory.length > 0) {
+                tournamentState = tournamentState.advancementHistory.pop();
+                saveState();
+                updateDashboard();
+            } else {
+                alert('No advancements to undo.');
+            }
+        }
+
+        // Clear all names and reset tournament state
+        function clearNames() {
+            if (confirm('Are you sure you want to clear all player names and reset the tournament?')) {
+                const playerCount = parseInt(document.getElementById('player-count').value);
+                tournamentState = getDefaultState(playerCount);
+                saveState();
+                updateDashboard();
+            }
+        }
+
+        // Save state to localStorage
+        function saveState() {
+            localStorage.setItem('tournamentState', JSON.stringify(tournamentState));
+        }
+
+        // Update dashboard UI
+        function updateDashboard() {
+            document.getElementById('round-number').textContent = tournamentState.currentRound;
+            document.getElementById('player-count').value = tournamentState.playerCount;
+            document.querySelector('.undo-btn').disabled = false;
+            document.querySelector('.clear-btn').disabled = false;
+            validatePlayerCount();
+            generateInputs();
+            generatePairingSelections();
+        }
+
+        // Handle player count change
+        function handlePlayerCountChange() {
+            const playerCount = parseInt(document.getElementById('player-count').value);
+            if (playerCount !== tournamentState.playerCount) {
+                if (tournamentState.currentRound > 1 || tournamentState.winners.length > 0) {
+                    if (!confirm('Changing the player count will reset the tournament. Continue?')) {
+                        document.getElementById('player-count').value = tournamentState.playerCount;
+                        return;
+                    }
+                }
+                tournamentState = getDefaultState(playerCount);
+                validatePlayerCount();
+                saveState();
+                updateDashboard();
+                const liveRegion = document.getElementById('live-region');
+                liveRegion.textContent = `Tournament set to ${playerCount} players`;
+            }
+        }
+
+        // Initialize
+        document.getElementById('player-count').addEventListener('change', handlePlayerCountChange);
+        updateDashboard();
+    </script>
+</body>
+</html>
