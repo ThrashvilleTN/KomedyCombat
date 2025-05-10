@@ -109,6 +109,8 @@
             <button class="button roast-button" data-player="1">Roast</button>
             <button class="button bomb-button" data-player="1">Bomb</button>
             <button class="button winner-button" data-player="1">Declare Winner</button>
+            <input class='health-control' data-player="1" type="number">
+            <button class="button health-button" data-player="1">Health Control</button>
         </div>
         <div class="player-controls">
             <h2>Player 2</h2>
@@ -118,6 +120,8 @@
             <button class="button roast-button" data-player="2">Roast</button>
             <button class="button bomb-button" data-player="2">Bomb</button>
             <button class="button winner-button" data-player="2">Declare Winner</button>
+            <input class='health-control' data-player="2" type="number">
+            <button class="button health-button" data-player="2">Health Control</button>
         </div>
     </div>
 
@@ -146,7 +150,8 @@
             player2Name: document.getElementById('player2Name'),
             fireball: document.getElementById('fireball'),
             buttons: document.querySelectorAll('.button[data-player]'),
-            reset: document.getElementById('resetHealth')
+            reset: document.getElementById('resetHealth'),
+            inputs: document.getElementsByClassName('health-control'),
         };
 
         function initSounds() {
@@ -166,11 +171,13 @@
             localStorage.setItem(id, value.trim() || event.target.placeholder);
         }
 
-        function reduceHealth(player, points) {
+        function reduceHealth(player, points, preventDefaultEffects) {
             const currentHealth = parseInt(localStorage.getItem(`health${player}`)) || INITIAL_HEALTH;
             const newHealth = Math.max(0, currentHealth - points);
             localStorage.setItem(`health${player}`, newHealth);
             
+            if (preventDefaultEffects) return;
+
             try {
                 if (sounds[points]) {
                     sounds[points].currentTime = 0;
@@ -191,6 +198,7 @@
         }
 
         function triggerBomb(player) {
+            reduceHealth(player, 2, true)
             localStorage.setItem(`bombPlayer${player}`, 'true');
             window.dispatchEvent(new Event('storage'));
         }
@@ -252,7 +260,13 @@
         elements.buttons.forEach(button => {
             button.addEventListener('click', () => {
                 const player = parseInt(button.dataset.player);
-                const points = parseInt(button.dataset.points);
+                var points = parseInt(button.dataset.points);
+                var preventDefaultEffects = false;
+                if (button.classList.contains('health-button')) {
+                    const index = player - 1;
+                    points = elements.inputs[index].value
+                    preventDefaultEffects = true
+                }
                 if (button.classList.contains('roast-button')) {
                     triggerRoast(player);
                 } else if (button.classList.contains('bomb-button')) {
@@ -260,7 +274,7 @@
                 } else if (button.classList.contains('winner-button')) {
                     declareWinner(player);
                 } else {
-                    reduceHealth(player, points);
+                    reduceHealth(player, points, preventDefaultEffects);
                 }
             });
         });
