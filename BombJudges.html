@@ -12,15 +12,19 @@
         }
         .buttons-container {
             display: flex;
+            flex-wrap: nowrap;
             justify-content: space-around;
-            flex-wrap: wrap;
             gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
         }
-        .player   .player-controls {
+        .player-controls {
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-width: 200px;
+            flex: 1;
+            min-width: 150px;
+            padding: 10px;
         }
         .button {
             margin: 5px;
@@ -32,6 +36,8 @@
             background-color: #4CAF50;
             color: white;
             transition: background-color 0.2s;
+            width: 100%;
+            box-sizing: border-box;
         }
         .button:hover {
             background-color: #45a049;
@@ -72,16 +78,11 @@
         .timer-stop-button:hover {
             background-color: #da190b;
         }
-        .fireball {
-            position: fixed;
-            width: 100px;
-            display: none;
-            z-index: 10;
-            pointer-events: none;
+        .adjust-button {
+            background-color: #2196F3;
         }
-        @keyframes fireball-animation {
-            from { transform: translateX(0); }
-            to { transform: translateX(calc(var(--distance) * 1px)); }
+        .adjust-button:hover {
+            background-color: #1976D2;
         }
         input[type="text"], input[type="number"] {
             padding: 5px;
@@ -94,6 +95,9 @@
             flex-wrap: wrap;
             gap: 20px;
             margin-bottom: 30px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .health-display {
             display: flex;
@@ -115,16 +119,33 @@
             text-align: center;
         }
         @media (max-width: 768px) {
-            .health-container, .buttons-container {
+            body {
+                margin: 20px;
+            }
+            .buttons-container {
+                gap: 10px;
+            }
+            .player-controls {
+                min-width: 120px;
+                padding: 5px;
+            }
+            .button {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+            .health-container {
                 flex-direction: column;
                 align-items: center;
             }
-            .health-display, .player-controls {
+            .health-display {
                 min-width: 100%;
                 max-width: 300px;
             }
             .health-bar {
                 width: 100%;
+            }
+            input[type="text"], input[type="number"] {
+                width: 150px;
             }
         }
     </style>
@@ -174,6 +195,13 @@
         </div>
     </div>
 
+    <h1>Custom Health Adjustment</h1>
+    <div>
+        <label>Health Change (positive or negative): <input type="number" id="healthChangeInput" placeholder="Enter health change"></label><br>
+        <button class="button adjust-button" id="adjustHealth1">Adjust Player 1 Health</button>
+        <button class="button adjust-button" id="adjustHealth2">Adjust Player 2 Health</button>
+    </div>
+
     <h1>Reset Health</h1>
     <button class="button reset-button" id="resetHealth">Reset Health to Full</button>
     
@@ -184,11 +212,7 @@
         <button class="button timer-stop-button" id="stopTimer">Stop Timer</button>
     </div>
     
-    <audio id="sound1" src="sounds/hit1.mp3" preload="auto"></audio>
-    <audio id="sound2" src="sounds/hit2.mp3" preload="auto"></audio>
     <audio id="sound3" src="sounds/hit3.mp3" preload="auto"></audio>
-    
-    <img src="energyblast.gif" id="fireball" class="fireball" alt="Energy Blast">
     
     <script>
         const INITIAL_HEALTH = 30;
@@ -203,20 +227,17 @@
             health2Bar: document.getElementById('health2Bar'),
             health1Text: document.getElementById('health1Text'),
             health2Text: document.getElementById('health2Text'),
-            fireball: document.getElementById('fireball'),
             buttons: document.querySelectorAll('.button[data-player]'),
-            reset: document.getElementById('resetHealth')
+            reset: document.getElementById('resetHealth'),
+            healthChangeInput: document.getElementById('healthChangeInput'),
+            adjustHealth1: document.getElementById('adjustHealth1'),
+            adjustHealth2: document.getElementById('adjustHealth2')
         };
 
         function initSounds() {
-            sounds[1] = document.getElementById('sound1');
-            sounds[2] = document.getElementById('sound2');
             sounds[3] = document.getElementById('sound3');
-            
-            Object.values(sounds).forEach(sound => {
-                sound.addEventListener('error', () => {
-                    console.error(`Failed to load sound: ${sound.src}`);
-                });
+            sounds[3].addEventListener('error', () => {
+                console.error(`Failed to load sound: ${sounds[3].src}`);
             });
         }
 
@@ -247,21 +268,32 @@
 
         async function reduceHealth(player, points) {
             const currentHealth = parseInt(localStorage.getItem(`health${player}`)) || INITIAL_HEALTH;
-            const newHealth = Math.max(0, currentHealth - points);
+            const newHealth = Math.max(0, Math.min(INITIAL_HEALTH, currentHealth - points));
             localStorage.setItem(`health${player}`, newHealth);
-            
-            if (sounds[points]) {
+            if (points === 3) {
+                localStorage.setItem('minus3Player', player);
                 try {
-                    sounds[points].currentTime = 0;
-                    await sounds[points].play();
-                    continueGameFlow(player, points);
+                    sounds[3].currentTime = 0;
+                    await sounds[3].play();
                 } catch (error) {
                     console.log('Audio playback failed:', error);
-                    continueGameFlow(player, points);
                 }
-            } else {
-                continueGameFlow(player, points);
             }
+            updateHealthDisplay();
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        function adjustHealth(player) {
+            const change = parseInt(elements.healthChangeInput.value);
+            if (isNaN(change)) {
+                alert('Please enter a valid number!');
+                return;
+            }
+            const currentHealth = parseInt(localStorage.getItem(`health${player}`)) || INITIAL_HEALTH;
+            const newHealth = Math.max(0, Math.min(INITIAL_HEALTH, currentHealth + change));
+            localStorage.setItem(`health${player}`, newHealth);
+            updateHealthDisplay();
+            window.dispatchEvent(new Event('storage'));
         }
 
         function triggerRoast(player) {
@@ -296,31 +328,6 @@
             window.dispatchEvent(new Event('storage'));
         }
 
-        function continueGameFlow(player, points) {
-            if (points === 3) triggerFireball(player);
-            updateHealthDisplay();
-            window.dispatchEvent(new Event('storage'));
-        }
-
-        function triggerFireball(player) {
-            const startX = player === 1 ? window.innerWidth - 150 : 50;
-            const endX = player === 1 ? 50 : window.innerWidth - 150;
-            const distance = endX - startX;
-
-            Object.assign(elements.fireball.style, {
-                top: '50%',
-                left: `${startX}px`,
-                display: 'block',
-                '--distance': distance
-            });
-            
-            elements.fireball.style.animation = 'fireball-animation 1s linear';
-            elements.fireball.onanimationend = () => {
-                elements.fireball.style.display = 'none';
-                elements.fireball.style.animation = '';
-            };
-        }
-
         function resetHealth() {
             ['health1', 'health2'].forEach(key => localStorage.setItem(key, INITIAL_HEALTH));
             updateHealthDisplay();
@@ -346,6 +353,8 @@
             });
         });
         elements.reset.addEventListener('click', resetHealth);
+        elements.adjustHealth1.addEventListener('click', () => adjustHealth(1));
+        elements.adjustHealth2.addEventListener('click', () => adjustHealth(2));
         document.getElementById('startTimer').addEventListener('click', startTimer);
         document.getElementById('stopTimer').addEventListener('click', stopTimer);
 

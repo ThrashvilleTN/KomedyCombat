@@ -7,11 +7,15 @@
     <!-- Preload assets to reduce latency -->
     <link rel="preload" href="R.gif" as="image">
     <link rel="preload" href="fireball.png" as="image">
-    <link rel="preload" href="energyblast.gif" as="image">
     <link rel="preload" href="bomb.gif" as="image">
+    <link rel="preload" href="energyblast.gif" as="image">
+    <link rel="preload" href="energyblast2.gif" as="image">
+    <link rel="preload" href="energyblast3.gif" as="image">
+    <link rel="preload" href="firstfireball.gif" as="image">
     <link rel="preload" href="sounds/roasted.mp3" as="audio">
     <link rel="preload" href="sounds/gong.m4a" as="audio">
     <link rel="preload" href="sounds/The bomb.m4a" as="audio">
+    <link rel="preload" href="sounds/hit3.mp3" as="audio">
     <style>
         body {
             text-align: center;
@@ -98,7 +102,7 @@
             to { transform: translateX(calc(var(--fireball-target) - 50px)); }
         }
 
-        .energyblast {
+        .blast-effect {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -106,26 +110,7 @@
             width: 1000px;
             display: none;
             z-index: 100;
-        }
-
-        .punch-effect {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 300px;
-            display: none;
-            z-index: 90;
-        }
-
-        .kick-effect {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 480px;
-            display: none;
-            z-index: 90;
+            pointer-events: none;
         }
 
         .roast-effect {
@@ -267,7 +252,7 @@
                 margin: 20px 0;
             }
 
-            .fireball, .energyblast, .bomb-effect {
+            .fireball, .bomb-effect, .blast-effect {
                 width: 50%;
                 max-width: 200px;
             }
@@ -289,7 +274,6 @@
             .timer-box p {
                 font-size: 100px;
             }
-
         }
     </style>
 </head>
@@ -315,16 +299,14 @@
         </div>
     </div>
 
-    
     <div class="fireball" id="fireball"></div>
-    <img src="energyblast.gif" id="energyblast" class="energyblast" alt="Energy Blast">
-    <img src="punch.jpg" id="punch" class="punch-effect" alt="Punch Effect">
-    <img src="kick.png" id="kick" class="kick-effect" alt="Kick Effect">
+    <img src="energyblast.gif" id="blast" class="blast-effect" alt="Blast Effect">
     <img src="RoastedDragonhead.JPG" id="roast1" class="roast-effect" alt="Roast Effect Player 1">
     <img src="RoastedDragonhead.JPG" id="roast2" class="roast-effect" alt="Roast Effect Player 2">
     <audio id="roast-sound" src="sounds/roasted.mp3" preload="auto"></audio>
     <audio id="gong-sound" src="sounds/gong.m4a" preload="auto"></audio>
     <audio id="bomb-sound" src="sounds/The bomb.m4a" preload="auto"></audio>
+    <audio id="hit3-sound" src="sounds/hit3.mp3" preload="auto"></audio>
     
     <div class="timer-box" id="timer-box">
         <p id="timer-text">0</p>
@@ -340,6 +322,7 @@
         let prevHealth1 = INITIAL_HEALTH;
         let prevHealth2 = INITIAL_HEALTH;
         let timerInterval = null;
+        const blastGifs = ['energyblast.gif', 'energyblast2.gif', 'energyblast3.gif', 'firstfireball.gif'];
 
         function updateHealth() {
             let health1 = parseInt(localStorage.getItem('health1'));
@@ -398,31 +381,23 @@
             });
         }
 
-        function triggerEnergyBlast(playerHit) {
-            const energyBlast = document.getElementById('energyblast');
-            energyBlast.style.display = 'block';
-            energyBlast.style.transform = playerHit === 1 
-                ? 'translate(-50%, -50%) scaleX(-1)' 
-                : 'translate(-50%, -50%) scaleX(1)';
+        function triggerBlast(player) {
+            const blast = document.getElementById('blast');
+            const hit3Sound = document.getElementById('hit3-sound');
+            let blastIndex = parseInt(localStorage.getItem('blastIndex')) || 0;
+            blast.src = blastGifs[blastIndex];
+            blast.style.transform = player === 1 ? 'translate(-50%, -50%) scaleX(1)' : 'translate(-50%, -50%) scaleX(-1)';
+            blast.style.display = 'block';
+            
+            hit3Sound.currentTime = 0;
+            hit3Sound.play().catch(error => console.log('Audio playback failed:', error));
+
             setTimeout(() => {
-                energyBlast.style.display = 'none';
+                blast.style.display = 'none';
             }, 1000);
-        }
 
-        function triggerPunch() {
-            const punch = document.getElementById('punch');
-            punch.style.display = 'block';
-            setTimeout(() => {
-                punch.style.display = 'none';
-            }, 800);
-        }
-
-        function triggerKick() {
-            const kick = document.getElementById('kick');
-            kick.style.display = 'block';
-            setTimeout(() => {
-                kick.style.display = 'none';
-            }, 800);
+            blastIndex = (blastIndex + 1) % blastGifs.length;
+            localStorage.setItem('blastIndex', blastIndex);
         }
 
         function triggerRoast(player) {
@@ -462,7 +437,14 @@
             bombImg.style.display = 'block';
             setTimeout(() => {
                 bombImg.style.display = 'none';
-            }, 1500); // Adjusted to GIF duration
+                // Reduce health by 2 points 0.8 seconds after GIF disappears
+                setTimeout(() => {
+                    let currentHealth = parseInt(localStorage.getItem(`health${player}`)) || INITIAL_HEALTH;
+                    let newHealth = Math.max(0, currentHealth - 2);
+                    localStorage.setItem(`health${player}`, newHealth);
+                    window.dispatchEvent(new Event('storage'));
+                }, 800);
+            }, 1500); // GIF duration
         }
 
         function showWinner(winner) {
@@ -505,7 +487,7 @@
         }
 
         function resetGame() {
-            ['health1', 'health2', 'timerActive', 'timerSeconds', 'winner', 'roastPlayer1', 'roastPlayer2', 'bombPlayer1', 'bombPlayer2'].forEach(key => localStorage.removeItem(key));
+            ['health1', 'health2', 'timerActive', 'timerSeconds', 'winner', 'roastPlayer1', 'roastPlayer2', 'bombPlayer1', 'bombPlayer2', 'blastIndex', 'minus3Player'].forEach(key => localStorage.removeItem(key));
             localStorage.setItem('health1', INITIAL_HEALTH);
             localStorage.setItem('health2', INITIAL_HEALTH);
             stopTimerCountdown();
@@ -517,7 +499,7 @@
 
         function reduceHealth(player, points) {
             let currentHealth = parseInt(localStorage.getItem(`health${player}`)) || INITIAL_HEALTH;
-            let newHealth = Math.max(0, currentHealth - points);
+            let newHealth = Math.max(0, Math.min(INITIAL_HEALTH, currentHealth - points));
             localStorage.setItem(`health${player}`, newHealth);
             if (points === 3) {
                 triggerFireball(player);
@@ -529,20 +511,18 @@
             let health1 = parseInt(localStorage.getItem('health1')) || INITIAL_HEALTH;
             let health2 = parseInt(localStorage.getItem('health2')) || INITIAL_HEALTH;
 
-            if (prevHealth1 - health1 === 1) {
-                triggerPunch();
-            } else if (prevHealth1 - health1 === 2) {
-                triggerKick();
-            } else if (prevHealth1 - health1 === 3) {
-                triggerEnergyBlast(1);
+            const minus3Player = localStorage.getItem('minus3Player');
+            if (minus3Player) {
+                triggerBlast(parseInt(minus3Player));
+                localStorage.removeItem('minus3Player');
+            }
+
+            if (prevHealth1 - health1 === 3) {
+                triggerFireball(1);
             }
             
-            if (prevHealth2 - health2 === 1) {
-                triggerPunch();
-            } else if (prevHealth2 - health2 === 2) {
-                triggerKick();
-            } else if (prevHealth2 - health2 === 3) {
-                triggerEnergyBlast(2);
+            if (prevHealth2 - health2 === 3) {
+                triggerFireball(2);
             }
 
             if (localStorage.getItem('roastPlayer1')) {
@@ -594,7 +574,7 @@
         window.addEventListener('load', () => {
             prevHealth1 = parseInt(localStorage.getItem('health1')) || INITIAL_HEALTH;
             prevHealth2 = parseInt(localStorage.getItem('health2')) || INITIAL_HEALTH;
-            ['bomb-sound', 'gong-sound', 'roast-sound'].forEach(id => {
+            ['bomb-sound', 'gong-sound', 'roast-sound', 'hit3-sound'].forEach(id => {
                 document.getElementById(id).volume = 0.75;
             });
             updateHealth();
