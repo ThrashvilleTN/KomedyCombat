@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tournament Bracket</title>
     <style>
+        @font-face {
+            font-family: 'MK4';
+            src: url('MK4.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -96,8 +103,9 @@
             pointer-events: none;
         }
         .pairing p {
-            margin: 2px 0;
+            margin: 4px 0;
             font-size: calc(0.5vw + 0.5rem);
+            font-family: 'MK4', Arial, sans-serif;
             color: #ffffff;
             line-height: 1.2;
             white-space: nowrap;
@@ -111,6 +119,7 @@
             font-weight: bold;
             color: #DAA520;
             font-size: calc(0.4vw + 0.4rem);
+            margin: 2px 0;
         }
         .pairing:focus {
             outline: 2px solid #DAA520;
@@ -160,9 +169,12 @@
             }
             .pairing p {
                 font-size: calc(0.4vw + 0.4rem);
+                font-family: 'MK4', Arial, sans-serif;
+                margin: 3px 0;
             }
             .pairing .vs {
                 font-size: calc(0.3vw + 0.3rem);
+                margin: 1px 0;
             }
             .center-connector {
                 width: 12px;
@@ -192,9 +204,12 @@
             }
             .pairing p {
                 font-size: calc(0.3vw + 0.3rem);
+                font-family: 'MK4', Arial, sans-serif;
+                margin: 2px 0;
             }
             .pairing .vs {
                 font-size: calc(0.2vw + 0.2rem);
+                margin: 1px 0;
             }
             .center-connector {
                 width: 12px;
@@ -213,8 +228,7 @@
         <div class="logo-container">
             <img src="KClogo.png" alt="Tournament Logo" aria-label="Tournament Logo">
         </div>
-        <div class="bracket-columns">
-        </div>
+        <div class="bracket-columns"></div>
     </div>
 
     <script>
@@ -253,9 +267,11 @@
         }
 
         function isRoundFinished(round) {
-            const expectedWinners = [8, 4, 2, 1];
+            const expectedWinners = Math.pow(2, Math.ceil(Math.log2(tournamentState.players.length)) - round);
             const winners = tournamentState.winners[round - 1] || [];
-            return tournamentState.currentRound > round && winners.length === expectedWinners[round - 1];
+            const validWinners = winners.filter(w => w != null && w !== '' && w !== undefined);
+            console.log(`Round ${round} check: ${validWinners.length}/${expectedWinners} winners`, validWinners);
+            return validWinners.length === expectedWinners;
         }
 
         function generateFullBracket() {
@@ -266,7 +282,15 @@
             const screenWidth = window.innerWidth;
             const columnWidth = Math.min(12, (screenWidth - 20) / (totalRounds * 2 + 1)) + 'vw';
 
+            console.log('Tournament State:', JSON.parse(JSON.stringify(tournamentState)));
+
+            // Left column (Rounds 1 to totalRounds - 1)
             for (let round = 1; round < totalRounds; round++) {
+                if (round > 1 && !isRoundFinished(round - 1)) {
+                    console.log(`Skipping Round ${round} Left: Previous round not finished`);
+                    continue;
+                }
+
                 const column = document.createElement('div');
                 column.className = 'column left';
                 column.setAttribute('role', 'region');
@@ -274,11 +298,12 @@
 
                 let players = round === 1 
                     ? tournamentState.players.slice(0, halfPlayers)
-                    : (tournamentState.winners[round - 2]?.slice(0, tournamentState.winners[round - 2].length / 2) || []);
+                    : (tournamentState.winners[round - 2]?.slice(0, tournamentState.winners[round - 2].length / 2).filter(p => p != null && p !== '' && p !== undefined) || []);
                 let winners = tournamentState.winners[round - 1] || [];
-                let isFinished = isRoundFinished(round);
+                let pairIndex = 0;
 
-                if (players.length === 0 && round > tournamentState.currentRound) {
+                if (players.length === 0) {
+                    console.warn(`No players for Round ${round} Left`);
                     const pairingDiv = document.createElement('div');
                     pairingDiv.className = 'pairing';
                     pairingDiv.setAttribute('role', 'region');
@@ -293,37 +318,47 @@
                         pairingDiv.setAttribute('role', 'region');
                         pairingDiv.tabIndex = 0;
 
-                        let player1 = players[i];
-                        let player2 = i + 1 < players.length ? players[i + 1] : null;
+                        let player1 = players[i] || 'TBD';
+                        let player2 = i + 1 < players.length ? (players[i + 1] || 'TBD') : null;
                         let player1Class = '';
                         let player2Class = '';
 
-                        if (isFinished && player2 && !player2.startsWith('Bye')) {
-                            player1Class = winners.includes(player1) ? '' : 'non-advancer';
-                            player2Class = winners.includes(player2) ? '' : 'non-advancer';
+                        if (winners[pairIndex] && player2 && !player2.startsWith('Bye')) {
+                            player1Class = winners[pairIndex] === player1 ? '' : 'non-advancer';
+                            player2Class = winners[pairIndex] === player2 ? '' : 'non-advancer';
+                        } else if (round === 1 && player1 && tournamentState.players[i + 1]?.startsWith('Bye') && winners[pairIndex]) {
+                            player1Class = winners[pairIndex] === player1 ? '' : 'non-advancer';
                         }
 
                         if (player2) {
-                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}`);
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}${winners[pairIndex] ? `, Winner: ${winners[pairIndex]}` : ''}`);
                             pairingDiv.innerHTML = `
                                 <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
                                 <p class="vs">VS</p>
                                 <p class="${player2Class}" ${player2Class ? 'aria-describedby="loss-indicator"' : ''}>${player2}</p>
                             `;
-                        } else {
-                            pairingDiv.setAttribute('aria-label', `Bye: ${player1}`);
+                        } else if (round === 1 && player1 && tournamentState.players[i + 1]?.startsWith('Bye')) {
+                            pairingDiv.setAttribute('aria-label', `Bye: ${player1}${winners[pairIndex] ? `, Advanced: ${winners[pairIndex]}` : ''}`);
                             pairingDiv.innerHTML = `
                                 <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
                                 <p class="vs">Bye</p>
                                 <p> </p>
                             `;
+                        } else {
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs TBD${winners[pairIndex] ? `, Advanced: ${winners[pairIndex]}` : ''}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">TBD</p>
+                                <p> </p>
+                            `;
                         }
                         column.appendChild(pairingDiv);
+                        pairIndex++;
                     }
                 }
 
                 bracketColumns.appendChild(column);
-                if (round < totalRounds - 1) {
+                if (round < totalRounds - 1 && isRoundFinished(round)) {
                     const connector = document.createElement('div');
                     connector.className = 'center-connector';
                     connector.innerHTML = '<div class="connector-line"></div>';
@@ -331,69 +366,80 @@
                 }
             }
 
-            const centerColumn = document.createElement('div');
-            centerColumn.className = 'column center';
-            centerColumn.setAttribute('role', 'region');
-            centerColumn.setAttribute('aria-label', `Final Round`);
-            
-            let finalPlayers = tournamentState.winners[totalRounds - 2] || [];
-            let winners = tournamentState.winners[totalRounds - 1] || [];
-            let isFinalFinished = isRoundFinished(totalRounds);
+            // Center column (Final round)
+            if (tournamentState.currentRound >= totalRounds && isRoundFinished(totalRounds - 1)) {
+                const centerColumn = document.createElement('div');
+                centerColumn.className = 'column center';
+                centerColumn.setAttribute('role', 'region');
+                centerColumn.setAttribute('aria-label', `Final Round`);
 
-            if (finalPlayers.length === 0 && tournamentState.currentRound >= totalRounds) {
-                const pairingDiv = document.createElement('div');
-                pairingDiv.className = 'pairing';
-                pairingDiv.setAttribute('role', 'region');
-                pairingDiv.setAttribute('aria-label', `Final Round TBD`);
-                pairingDiv.tabIndex = 0;
-                pairingDiv.innerHTML = `<p>Final</p><p class="vs">TBD</p><p> </p>`;
-                centerColumn.appendChild(pairingDiv);
-            } else if (finalPlayers.length === 1) {
-                const pairingDiv = document.createElement('div');
-                pairingDiv.className = 'pairing';
-                pairingDiv.setAttribute('role', 'region');
-                pairingDiv.setAttribute('aria-label', `Tournament Winner: ${finalPlayers[0]}`);
-                pairingDiv.tabIndex = 0;
-                pairingDiv.innerHTML = `<p>Winner</p><p class="vs"> </p><p>${finalPlayers[0]}</p>`;
-                centerColumn.appendChild(pairingDiv);
-            } else {
-                for (let i = 0; i < finalPlayers.length; i += 2) {
+                let finalPlayers = tournamentState.winners[totalRounds - 2]?.filter(p => p != null && p !== '' && p !== undefined) || [];
+                let winners = tournamentState.winners[totalRounds - 1] || [];
+
+                if (finalPlayers.length === 0) {
+                    console.warn('No final players for Final Round');
                     const pairingDiv = document.createElement('div');
                     pairingDiv.className = 'pairing';
                     pairingDiv.setAttribute('role', 'region');
+                    pairingDiv.setAttribute('aria-label', `Final Round TBD`);
                     pairingDiv.tabIndex = 0;
-
-                    let player1 = finalPlayers[i];
-                    let player2 = i + 1 < finalPlayers.length ? finalPlayers[i + 1] : null;
-                    let player1Class = '';
-                    let player2Class = '';
-
-                    if (isFinalFinished && player2 && !player2.startsWith('Bye')) {
-                        player1Class = winners.includes(player1) ? '' : 'non-advancer';
-                        player2Class = winners.includes(player2) ? '' : 'non-advancer';
-                    }
-
-                    if (player2) {
-                        pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}`);
-                        pairingDiv.innerHTML = `
-                            <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
-                            <p class="vs">VS</p>
-                            <p class="${player2Class}" ${player2Class ? 'aria-describedby="loss-indicator"' : ''}>${player2}</p>
-                        `;
-                    } else {
-                        pairingDiv.setAttribute('aria-label', `Bye: ${player1}`);
-                        pairingDiv.innerHTML = `
-                            <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
-                            <p class="vs">Bye</p>
-                            <p> </p>
-                        `;
-                    }
+                    pairingDiv.innerHTML = `<p>Final</p><p class="vs">TBD</p><p> </p>`;
                     centerColumn.appendChild(pairingDiv);
-                }
-            }
-            bracketColumns.appendChild(centerColumn);
+                } else if (finalPlayers.length === 1) {
+                    const pairingDiv = document.createElement('div');
+                    pairingDiv.className = 'pairing';
+                    pairingDiv.setAttribute('role', 'region');
+                    pairingDiv.setAttribute('aria-label', `Tournament Winner: ${finalPlayers[0]}`);
+                    pairingDiv.tabIndex = 0;
+                    pairingDiv.innerHTML = `<p>Winner</p><p class="vs"> </p><p>${finalPlayers[0]}</p>`;
+                    centerColumn.appendChild(pairingDiv);
+                } else {
+                    let pairIndex = 0;
+                    for (let i = 0; i < finalPlayers.length; i += 2) {
+                        const pairingDiv = document.createElement('div');
+                        pairingDiv.className = 'pairing';
+                        pairingDiv.setAttribute('role', 'region');
+                        pairingDiv.tabIndex = 0;
 
+                        let player1 = finalPlayers[i] || 'TBD';
+                        let player2 = i + 1 < finalPlayers.length ? (finalPlayers[i + 1] || 'TBD') : null;
+                        let player1Class = '';
+                        let player2Class = '';
+
+                        if (winners[pairIndex] && player2 && !player2.startsWith('Bye')) {
+                            player1Class = winners[pairIndex] === player1 ? '' : 'non-advancer';
+                            player2Class = winners[pairIndex] === player2 ? '' : 'non-advancer';
+                        }
+
+                        if (player2) {
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}${winners[pairIndex] ? `, Winner: ${winners[pairIndex]}` : ''}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">VS</p>
+                                <p class="${player2Class}" ${player2Class ? 'aria-describedby="loss-indicator"' : ''}>${player2}</p>
+                            `;
+                        } else {
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs TBD${winners[pairIndex] ? `, Advanced: ${winners[pairIndex]}` : ''}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">TBD</p>
+                                <p> </p>
+                            `;
+                        }
+                        centerColumn.appendChild(pairingDiv);
+                        pairIndex++;
+                    }
+                }
+                bracketColumns.appendChild(centerColumn);
+            }
+
+            // Right column (Rounds totalRounds - 1 to 1)
             for (let round = totalRounds - 1; round >= 1; round--) {
+                if (round > 1 && !isRoundFinished(round - 1)) {
+                    console.log(`Skipping Round ${round} Right: Previous round not finished`);
+                    continue;
+                }
+
                 const column = document.createElement('div');
                 column.className = 'column right';
                 column.setAttribute('role', 'region');
@@ -401,11 +447,14 @@
 
                 let players = round === 1 
                     ? tournamentState.players.slice(halfPlayers)
-                    : (tournamentState.winners[round - 2]?.slice(tournamentState.winners[round - 2].length / 2) || []);
+                    : (tournamentState.winners[round - 2]?.slice(tournamentState.winners[round - 2].length / 2).filter(p => p != null && p !== '' && p !== undefined) || []);
                 let winners = tournamentState.winners[round - 1] || [];
-                let isFinished = isRoundFinished(round);
+                let pairIndex = round === 1 ? halfPlayers / 2 : Math.floor(tournamentState.winners[round - 2]?.length / 4) || 0;
 
-                if (players.length === 0 && round > tournamentState.currentRound) {
+                console.log(`Round ${round} Right: pairIndex=${pairIndex}, players=`, players, 'winners=', winners);
+
+                if (players.length === 0) {
+                    console.warn(`No players for Round ${round} Right`);
                     const pairingDiv = document.createElement('div');
                     pairingDiv.className = 'pairing';
                     pairingDiv.setAttribute('role', 'region');
@@ -420,36 +469,46 @@
                         pairingDiv.setAttribute('role', 'region');
                         pairingDiv.tabIndex = 0;
 
-                        let player1 = players[i];
-                        let player2 = i + 1 < players.length ? players[i + 1] : null;
+                        let player1 = players[i] || 'TBD';
+                        let player2 = i + 1 < players.length ? (players[i + 1] || 'TBD') : null;
                         let player1Class = '';
                         let player2Class = '';
 
-                        if (isFinished && player2 && !player2.startsWith('Bye')) {
-                            player1Class = winners.includes(player1) ? '' : 'non-advancer';
-                            player2Class = winners.includes(player2) ? '' : 'non-advancer';
+                        if (winners[pairIndex] && player2 && !player2.startsWith('Bye')) {
+                            player1Class = winners[pairIndex] === player1 ? '' : 'non-advancer';
+                            player2Class = winners[pairIndex] === player2 ? '' : 'non-advancer';
+                        } else if (round === 1 && player1 && tournamentState.players[i + halfPlayers + 1]?.startsWith('Bye') && winners[pairIndex]) {
+                            player1Class = winners[pairIndex] === player1 ? '' : 'non-advancer';
                         }
 
                         if (player2) {
-                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}`);
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs ${player2}${winners[pairIndex] ? `, Winner: ${winners[pairIndex]}` : ''}`);
                             pairingDiv.innerHTML = `
                                 <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
                                 <p class="vs">VS</p>
                                 <p class="${player2Class}" ${player2Class ? 'aria-describedby="loss-indicator"' : ''}>${player2}</p>
                             `;
-                        } else {
-                            pairingDiv.setAttribute('aria-label', `Bye: ${player1}`);
+                        } else if (round === 1 && player1 && tournamentState.players[i + halfPlayers + 1]?.startsWith('Bye')) {
+                            pairingDiv.setAttribute('aria-label', `Bye: ${player1}${winners[pairIndex] ? `, Advanced: ${winners[pairIndex]}` : ''}`);
                             pairingDiv.innerHTML = `
                                 <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
                                 <p class="vs">Bye</p>
                                 <p> </p>
                             `;
+                        } else {
+                            pairingDiv.setAttribute('aria-label', `Match: ${player1} vs TBD${winners[pairIndex] ? `, Advanced: ${winners[pairIndex]}` : ''}`);
+                            pairingDiv.innerHTML = `
+                                <p class="${player1Class}" ${player1Class ? 'aria-describedby="loss-indicator"' : ''}>${player1}</p>
+                                <p class="vs">TBD</p>
+                                <p> </p>
+                            `;
                         }
                         column.appendChild(pairingDiv);
+                        pairIndex++;
                     }
                 }
 
-                if (round < totalRounds - 1) {
+                if (round < totalRounds - 1 && isRoundFinished(round)) {
                     const connector = document.createElement('div');
                     connector.className = 'center-connector';
                     connector.innerHTML = '<div class="connector-line"></div>';

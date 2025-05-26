@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tournament Dashboard</title>
     <style>
+        @font-face {
+            font-family: 'MK4';
+            src: url('MK4.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
@@ -92,6 +99,7 @@
         .player-input {
             padding: 8px;
             font-size: 16px;
+            font-family: 'MK4', Arial, sans-serif;
             border: 1px solid #DAA520;
             border-radius: 4px;
             width: 100%;
@@ -150,6 +158,7 @@
         }
         .player-name {
             font-size: 16px;
+            font-family: 'MK4', Arial, sans-serif;
             color: #ffffff;
             flex: 1;
             text-align: left;
@@ -217,6 +226,7 @@
             }
             .player-input, .player-name {
                 font-size: 14px;
+                font-family: 'MK4', Arial, sans-serif;
             }
             .vs {
                 font-size: 12px;
@@ -262,7 +272,6 @@
     </div>
 
     <script>
-        // Load tournament state from localStorage
         function getDefaultState(playerCount = 16) {
             const players = Array.from({ length: playerCount }, (_, i) => `Player ${i + 1}`);
             return {
@@ -270,22 +279,13 @@
                 players: players,
                 currentRound: 1,
                 winners: [],
-                advancementHistory: [],
-                pendingWinners: []
+                advancementHistory: []
             };
         }
         let tournamentState = JSON.parse(localStorage.getItem('tournamentState')) || getDefaultState(16);
 
-        // Ensure pendingWinners is cleared on initialization if round is reset
-        if (tournamentState.currentRound === 1 && tournamentState.winners.length === 0) {
-            tournamentState.pendingWinners = [];
-            localStorage.setItem('tournamentState', JSON.stringify(tournamentState));
-        }
+        const playerNameElements = new Map();
 
-        // Cache for player name DOM elements in winner selection
-        const playerNameElements = new Map(); // Map<playerIndex, Set<HTMLElement>>
-
-        // Validate player count and add byes if necessary
         function validatePlayerCount() {
             let playerCount = tournamentState.players.length;
             const isPowerOfTwo = playerCount && (playerCount & (playerCount - 1)) === 0;
@@ -300,7 +300,6 @@
             }
         }
 
-        // Generate input fields for player names
         function generateInputs() {
             const leftColumn = document.getElementById('left-column');
             const rightColumn = document.getElementById('right-column');
@@ -309,7 +308,6 @@
 
             const halfPlayers = tournamentState.players.length / 2;
 
-            // Left column
             for (let i = 0; i < halfPlayers; i += 2) {
                 const pairing = document.createElement('div');
                 pairing.className = 'pairing';
@@ -337,7 +335,7 @@
                 input2.value = i + 1 < halfPlayers ? tournamentState.players[i + 1] : '';
                 input2.dataset.index = i + 1;
                 input2.setAttribute('aria-label', `Player ${i + 2} name`);
-                input2.disabled = i + 1 >= halfPlayers;
+                input2.disabled = i + 1 >= halfPlayers || tournamentState.players[i + 1].startsWith('Bye');
                 input2.addEventListener('input', (e) => {
                     const oldName = tournamentState.players[i + 1];
                     tournamentState.players[i + 1] = e.target.value || `Player ${i + 2}`;
@@ -351,7 +349,6 @@
                 leftColumn.appendChild(pairing);
             }
 
-            // Right column
             for (let i = halfPlayers; i < tournamentState.players.length; i += 2) {
                 const pairing = document.createElement('div');
                 pairing.className = 'pairing';
@@ -379,7 +376,7 @@
                 input2.value = i + 1 < tournamentState.players.length ? tournamentState.players[i + 1] : '';
                 input2.dataset.index = i + 1;
                 input2.setAttribute('aria-label', `Player ${i + 2} name`);
-                input2.disabled = i + 1 >= tournamentState.players.length;
+                input2.disabled = i + 1 >= tournamentState.players.length || tournamentState.players[i + 1].startsWith('Bye');
                 input2.addEventListener('input', (e) => {
                     const oldName = tournamentState.players[i + 1];
                     tournamentState.players[i + 1] = e.target.value || `Player ${i + 2}`;
@@ -394,7 +391,6 @@
             }
         }
 
-        // Update player name in winner selection and winners array
         function updatePlayerName(index, newName, oldName) {
             tournamentState.players[index] = newName;
             tournamentState.winners = tournamentState.winners.map(round =>
@@ -407,9 +403,6 @@
                     round.map(w => (w === oldName ? newName : w))
                 )
             }));
-            tournamentState.pendingWinners = tournamentState.pendingWinners.map(w =>
-                w.player === oldName ? { ...w, player: newName } : w
-            );
             if (playerNameElements.has(index)) {
                 playerNameElements.get(index).forEach(element => {
                     element.textContent = newName;
@@ -427,24 +420,20 @@
             liveRegion.textContent = `Player ${index + 1} name changed to ${newName}`;
         }
 
-        // Generate bracket-like layout for selecting winners
         function generatePairingSelections() {
             const winnerSelection = document.getElementById('winner-selection');
             winnerSelection.innerHTML = '';
             let currentPlayers = tournamentState.currentRound === 1 
                 ? tournamentState.players 
-                : (tournamentState.winners[tournamentState.currentRound - 2] || []);
+                : (tournamentState.winners[tournamentState.currentRound - 2]?.filter(p => p != null && p !== '' && p !== undefined) || []);
 
-            // Clear cached elements for this round
             playerNameElements.clear();
 
-            // Create container for winner selection
             const container = document.createElement('div');
             container.className = 'winner-container';
             container.setAttribute('role', 'region');
             container.setAttribute('aria-label', `Round ${tournamentState.currentRound} Winner Selection`);
 
-            // Handle final round (2 players) or tournament winner (1 or 0 players)
             if (currentPlayers.length <= 2) {
                 if (currentPlayers.length === 2) {
                     const centerColumn = document.createElement('div');
@@ -455,7 +444,8 @@
 
                     const playerIndex1 = tournamentState.players.indexOf(currentPlayers[0]);
                     const playerIndex2 = tournamentState.players.indexOf(currentPlayers[1]);
-                    const pairing = createWinnerPairing(currentPlayers[0], currentPlayers[1], 0, playerIndex1, playerIndex2);
+                    const winners = tournamentState.winners[tournamentState.currentRound - 1] || [];
+                    const pairing = createWinnerPairing(currentPlayers[0], currentPlayers[1], 0, playerIndex1, playerIndex2, winners.includes(currentPlayers[0]) || winners.includes(currentPlayers[1]));
                     centerColumn.appendChild(pairing);
 
                     container.appendChild(centerColumn);
@@ -468,7 +458,7 @@
                     winnerDiv.className = 'winner-pairing';
                     winnerDiv.innerHTML = `<h3 style="margin: 0; color: #ffffff;">Tournament Winner: ${currentPlayers[0]}</h3>`;
                     winnerSelection.appendChild(winnerDiv);
-                    document.querySelector('.undo-btn').disabled = true;
+                    document.querySelector('.undo-btn').disabled = false;
                     document.querySelector('.clear-btn').disabled = true;
                     playerNameElements.clear();
                     return;
@@ -478,77 +468,62 @@
                     return;
                 }
             } else {
-                if (tournamentState.currentRound === 1) {
-                    const leftColumn = document.createElement('div');
-                    leftColumn.className = 'winner-column';
-                    leftColumn.setAttribute('role', 'region');
-                    leftColumn.setAttribute('aria-label', `Left Bracket Round ${tournamentState.currentRound}`);
+                const leftColumn = document.createElement('div');
+                leftColumn.className = 'winner-column';
+                leftColumn.setAttribute('role', 'region');
+                leftColumn.setAttribute('aria-label', `Left Bracket Round ${tournamentState.currentRound}`);
 
-                    const rightColumn = document.createElement('div');
-                    rightColumn.className = 'winner-column';
-                    rightColumn.setAttribute('role', 'region');
-                    rightColumn.setAttribute('aria-label', `Right Bracket Round ${tournamentState.currentRound}`);
+                const rightColumn = document.createElement('div');
+                rightColumn.className = 'winner-column';
+                rightColumn.setAttribute('role', 'region');
+                rightColumn.setAttribute('aria-label', `Right Bracket Round ${tournamentState.currentRound}`);
 
-                    const halfPlayers = currentPlayers.length / 2;
-                    let pairIndex = 0;
+                const halfPlayers = currentPlayers.length / 2;
+                let pairIndex = 0;
+                const winners = tournamentState.winners[tournamentState.currentRound - 1] || [];
 
-                    // Left column
-                    for (let i = 0; i < halfPlayers; i += 2) {
-                        if (i + 1 < halfPlayers) {
-                            if (currentPlayers[i + 1].startsWith('Bye')) {
-                                selectWinner(currentPlayers[i], pairIndex, null);
-                                pairIndex++;
-                                continue;
-                            }
-                            const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, i, i + 1);
-                            leftColumn.appendChild(pairing);
+                // Left column pairings
+                for (let i = 0; i < halfPlayers; i += 2) {
+                    if (i + 1 < halfPlayers) {
+                        const isAdvanced = winners[pairIndex] != null;
+                        if (tournamentState.currentRound === 1 && currentPlayers[i + 1].startsWith('Bye') && !isAdvanced) {
+                            selectWinner(currentPlayers[i], pairIndex, null, i);
                             pairIndex++;
+                            continue;
                         }
+                        const playerIndex1 = tournamentState.players.indexOf(currentPlayers[i]);
+                        const playerIndex2 = tournamentState.players.indexOf(currentPlayers[i + 1]);
+                        const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, playerIndex1, playerIndex2, isAdvanced);
+                        leftColumn.appendChild(pairing);
+                        pairIndex++;
                     }
-
-                    // Right column
-                    for (let i = halfPlayers; i < currentPlayers.length; i += 2) {
-                        if (i + 1 < currentPlayers.length) {
-                            if (currentPlayers[i + 1].startsWith('Bye')) {
-                                selectWinner(currentPlayers[i], pairIndex, null);
-                                pairIndex++;
-                                continue;
-                            }
-                            const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, i, i + 1);
-                            rightColumn.appendChild(pairing);
-                            pairIndex++;
-                        }
-                    }
-
-                    container.appendChild(leftColumn);
-                    container.appendChild(rightColumn);
-                } else {
-                    const centerColumn = document.createElement('div');
-                    centerColumn.className = 'winner-column';
-                    centerColumn.style.margin = '0 auto';
-                    centerColumn.setAttribute('role', 'region');
-                    centerColumn.setAttribute('aria-label', `Round ${tournamentState.currentRound}`);
-
-                    let pairIndex = 0;
-                    for (let i = 0; i < currentPlayers.length; i += 2) {
-                        if (i + 1 < currentPlayers.length) {
-                            const playerIndex1 = tournamentState.players.indexOf(currentPlayers[i]);
-                            const playerIndex2 = tournamentState.players.indexOf(currentPlayers[i + 1]);
-                            const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, playerIndex1, playerIndex2);
-                            centerColumn.appendChild(pairing);
-                            pairIndex++;
-                        }
-                    }
-
-                    container.appendChild(centerColumn);
                 }
+
+                // Right column pairings
+                for (let i = halfPlayers; i < currentPlayers.length; i += 2) {
+                    if (i + 1 < currentPlayers.length) {
+                        const isAdvanced = winners[pairIndex] != null;
+                        if (tournamentState.currentRound === 1 && currentPlayers[i + 1].startsWith('Bye') && !isAdvanced) {
+                            selectWinner(currentPlayers[i], pairIndex, null, i);
+                            pairIndex++;
+                            continue;
+                        }
+                        const playerIndex1 = tournamentState.players.indexOf(currentPlayers[i]);
+                        const playerIndex2 = tournamentState.players.indexOf(currentPlayers[i + 1]);
+                        const pairing = createWinnerPairing(currentPlayers[i], currentPlayers[i + 1], pairIndex, playerIndex1, playerIndex2, isAdvanced);
+                        rightColumn.appendChild(pairing);
+                        pairIndex++;
+                    }
+                }
+
+                container.appendChild(leftColumn);
+                container.appendChild(rightColumn);
             }
 
             winnerSelection.appendChild(container);
         }
 
-        // Helper function to create a winner pairing
-        function createWinnerPairing(player1, player2, pairIndex, playerIndex1, playerIndex2) {
+        function createWinnerPairing(player1, player2, pairIndex, playerIndex1, playerIndex2, isAdvanced) {
             const pairing = document.createElement('div');
             pairing.className = 'winner-pairing';
             pairing.setAttribute('role', 'group');
@@ -571,8 +546,8 @@
             btn1.setAttribute('aria-label', `Advance ${player1}`);
             btn1.dataset.player = player1;
             btn1.dataset.pairIndex = pairIndex;
-            btn1.disabled = tournamentState.pendingWinners.some(w => w.pairIndex === pairIndex);
-            btn1.addEventListener('click', () => selectWinner(player1, pairIndex, pairing));
+            btn1.disabled = isAdvanced;
+            btn1.addEventListener('click', () => selectWinner(player1, pairIndex, pairing, playerIndex1));
 
             row1.appendChild(name1);
             row1.appendChild(btn1);
@@ -597,8 +572,8 @@
             btn2.setAttribute('aria-label', `Advance ${player2}`);
             btn2.dataset.player = player2;
             btn2.dataset.pairIndex = pairIndex;
-            btn2.disabled = tournamentState.pendingWinners.some(w => w.pairIndex === pairIndex);
-            btn2.addEventListener('click', () => selectWinner(player2, pairIndex, pairing));
+            btn2.disabled = isAdvanced;
+            btn2.addEventListener('click', () => selectWinner(player2, pairIndex, pairing, playerIndex2));
 
             row2.appendChild(name2);
             row2.appendChild(btn2);
@@ -610,10 +585,14 @@
             return pairing;
         }
 
-        // Handle winner selection
-        function selectWinner(player, pairIndex, pairing) {
-            tournamentState.pendingWinners.push({ pairIndex, player });
-            saveState();
+        function selectWinner(player, pairIndex, pairing, playerIndex) {
+            tournamentState.advancementHistory.push(JSON.parse(JSON.stringify(tournamentState)));
+
+            if (!tournamentState.winners[tournamentState.currentRound - 1]) {
+                tournamentState.winners[tournamentState.currentRound - 1] = [];
+            }
+
+            tournamentState.winners[tournamentState.currentRound - 1][pairIndex] = player || 'Unknown';
 
             if (pairing) {
                 const buttons = pairing.querySelectorAll('.advance-btn');
@@ -622,68 +601,60 @@
 
             const currentPlayers = tournamentState.currentRound === 1 
                 ? tournamentState.players 
-                : tournamentState.winners[tournamentState.currentRound - 2];
+                : (tournamentState.winners[tournamentState.currentRound - 2]?.filter(p => p != null && p !== '' && p !== undefined) || []);
             const expectedWinners = Math.floor(currentPlayers.length / 2);
-            if (tournamentState.pendingWinners.length === expectedWinners) {
-                advanceRound();
+            const winners = tournamentState.winners[tournamentState.currentRound - 1].filter(w => w != null && w !== '' && w !== undefined);
+            console.log(`Round ${tournamentState.currentRound} advancement: ${winners.length}/${expectedWinners} winners`, winners);
+            if (winners.length === expectedWinners) {
+                tournamentState.currentRound++;
             }
 
-            const liveRegion = document.getElementById('live-region');
-            liveRegion.textContent = `${player} selected as winner for match ${pairIndex + 1}`;
-        }
-
-        // Advance to next round
-        function advanceRound() {
-            tournamentState.advancementHistory.push(JSON.parse(JSON.stringify(tournamentState)));
-            const winners = tournamentState.pendingWinners.map(w => w.player);
-            tournamentState.winners[tournamentState.currentRound - 1] = winners;
-            tournamentState.currentRound++;
-            tournamentState.pendingWinners = [];
             saveState();
             updateDashboard();
 
             const liveRegion = document.getElementById('live-region');
-            liveRegion.textContent = `Advanced to Round ${tournamentState.currentRound}`;
+            liveRegion.textContent = `${player} advanced in Round ${tournamentState.currentRound - (winners.length === expectedWinners ? 1 : 0)} match ${pairIndex + 1}`;
         }
 
-        // Undo the most recent advancement
         function undoAdvancement() {
             if (tournamentState.advancementHistory.length > 0) {
                 tournamentState = tournamentState.advancementHistory.pop();
                 saveState();
                 updateDashboard();
+                const liveRegion = document.getElementById('live-region');
+                liveRegion.textContent = `Undid last advancement, restored to Round ${tournamentState.currentRound}`;
             } else {
                 alert('No advancements to undo.');
+                const liveRegion = document.getElementById('live-region');
+                liveRegion.textContent = 'No advancements to undo';
             }
         }
 
-        // Clear all names and reset tournament state
         function clearNames() {
             if (confirm('Are you sure you want to clear all player names and reset the tournament?')) {
                 const playerCount = parseInt(document.getElementById('player-count').value);
                 tournamentState = getDefaultState(playerCount);
                 saveState();
                 updateDashboard();
+                const liveRegion = document.getElementById('live-region');
+                liveRegion.textContent = `Tournament reset to ${playerCount} players`;
             }
         }
 
-        // Save state to localStorage
         function saveState() {
             localStorage.setItem('tournamentState', JSON.stringify(tournamentState));
         }
 
-        // Update dashboard UI
         function updateDashboard() {
             document.getElementById('round-number').textContent = tournamentState.currentRound;
             document.getElementById('player-count').value = tournamentState.playerCount;
-            document.querySelector('.undo-btn').disabled = false;
+            document.querySelector('.undo-btn').disabled = tournamentState.advancementHistory.length === 0;
             document.querySelector('.clear-btn').disabled = false;
             validatePlayerCount();
             generateInputs();
             generatePairingSelections();
         }
 
-        // Handle player count change
         function handlePlayerCountChange() {
             const playerCount = parseInt(document.getElementById('player-count').value);
             if (playerCount !== tournamentState.playerCount) {
@@ -702,7 +673,6 @@
             }
         }
 
-        // Initialize
         document.getElementById('player-count').addEventListener('change', handlePlayerCountChange);
         updateDashboard();
     </script>
